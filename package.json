@@ -1,0 +1,25 @@
+{
+  "name": "perfil-pakete-123",
+  "version": "1.0.0",
+  "description": "Generador de los SVG del perfil de GitHub",
+  "scripts": {
+    "fichas": "node scripts/fichas.mjs",
+    "banner": "node scripts/banner.mjs",
+    "actividad": "node scripts/actividad.mjs",
+    "todo": "node scripts/fichas.mjs && node scripts/banner.mjs && node scripts/actividad.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pakete-123/Pakete-123.git"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Pakete-123/Pakete-123/issues"
+  },
+  "homepage": "https://github.com/Pakete-123/Pakete-123#readme",
+  "dependencies": {
+    "fontkit": "^2.0.4",
+    "subset-font": "^2.4.0"
+  },
+  "private": true
+}

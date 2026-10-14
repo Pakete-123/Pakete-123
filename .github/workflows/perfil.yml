@@ -1,0 +1,57 @@
+# Vuelve a dibujar el perfil.
+#
+# - Cada hora, para que la actividad, la fecha y los lenguajes estén al día.
+# - Al cambiar datos/perfil.json, los scripts o las fuentes.
+name: Perfil
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "datos/**"
+      - "scripts/**"
+      - "assets/fuentes/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: perfil
+  cancel-in-progress: false
+
+jobs:
+  dibujar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Banner y tarjetas
+        run: npm run fichas && npm run banner
+
+      - name: Actividad
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run actividad
+
+      - name: Guardar si ha cambiado algo
+        run: |
+          git add assets
+          if git diff --cached --quiet; then
+            echo "Nada que actualizar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: perfil actualizado"
+          git push

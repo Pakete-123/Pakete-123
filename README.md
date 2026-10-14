@@ -1,64 +1,17 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-  <img src="assets/banner-light.svg" width="100%" alt="Pablo Torrecilla. Estudiante de 2.º de DAM en el IES Lázaro Cárdenas. Técnico Superior en DAW.">
-</picture>
-
-<p align="center">
-  <a href="mailto:pablotl.dev@gmail.com"><img src="https://img.shields.io/badge/correo-pablotl.dev%40gmail.com-0969da?style=flat-square" alt="Correo: pablotl.dev@gmail.com"></a>
-  <a href="https://github.com/Pakete-123?tab=repositories"><img src="https://img.shields.io/badge/repos-4%20p%C3%BAblicos-8250df?style=flat-square" alt="Repositorios públicos"></a>
-  <img src="https://img.shields.io/badge/Madrid-Espa%C3%B1a-8250df?style=flat-square" alt="Madrid, España">
-</p>
-
-## Sobre mí
-
-Estudio **2.º de DAM** en el IES Lázaro Cárdenas, después de completar el ciclo de **Técnico Superior en Desarrollo de Aplicaciones Web (DAW)**. Me interesa sobre todo el desarrollo *full stack*: me gusta entender cómo funcionan las cosas por debajo y ponerlas en práctica en proyectos propios.
-
-En DAM se toca mucho el lado *front* (HTML, CSS, JavaScript), pero lo que más me gusta es la parte de **servidor**: bases de datos, autenticación y arquitecturas más serias.
-
-## Proyecto destacado
-
-### [VisorPlanosRedes](https://github.com/Pakete-123/VisorPlanosRedes)
-
-Visor de planos de redes de los edificios y sus distribuciones, en *full stack*.
-
-**Backend — NestJS + Prisma + PostgreSQL**
-
-- Arquitectura modular por dominio: `auth`, `users`, `floors` y `prisma`.
-- Autenticación **JWT** con guardas de acceso por **roles** mediante decorador propio (`@Roles`).
-- **Generación de PDF** de los planos a partir de los datos de cada planta (`pdf.service.ts`).
-- Esquema **Prisma** con **tres migraciones versionadas** y *seed* de datos de ejemplo.
-- Cobertura de **tests unitarios** de cada servicio y controlador, más **tests e2e** con Jest y *mocks* del cliente de Prisma.
-- **Docker Compose** para levantar el entorno completo de forma reproducible.
-
-**Frontend** en TypeScript, servido en contenedor aparte.
-
-> Es el proyecto del que más orgulloso estoy: es donde se juntan las tres cosas que más me gustan, que son **modelar datos**, **protegerlos** y **exponerlos por una API decente**.
-
-## Trayectoria
-
-| Periodo | Etapa |
-|---|---|
-| 2024 — 2026 | **Desarrollo de Aplicaciones Web (DAW)** — Técnico Superior |
-| 2026 — ahora | **Desarrollo de Aplicaciones Multiplataforma (DAM)** — 2.º curso, IES Lázaro Cárdenas |
-
-## Stack
-
-**Backend** · TypeScript · NestJS · Node.js · PostgreSQL · Prisma · PHP · SQL · JWT
-
-**Frontend** · JavaScript · HTML5 · CSS3 · Sass · Grid · Flexbox
-
-**Herramientas** · Git · GitHub · Docker · Jest · ESLint · Prettier
-
-## Proyectos
-
-| Repositorio | Módulo | Descripción |
-|---|---|---|
-| [VisorPlanosRedes](https://github.com/Pakete-123/VisorPlanosRedes) | Proyecto propio | Visor de planos de redes *full stack*. NestJS, Prisma, JWT con roles, PDF y tests e2e. |
-| [dwec-u3-notasapp](https://github.com/Pakete-123/dwec-u3-notasapp-hortelano-torrecilla) | DWEC · U.D. 3 | Gestor de notas y recordatorios en JavaScript puro, con persistencia en Web Storage y control de versiones por *snapshots*. |
-| [diw-u2-localhub](https://github.com/Pakete-123/diw-u2-localhub-hortelano-torrecilla) | DIW · U.D. 2 | Landing *one-page* responsive y accesible (AA) con CSS Grid y Flexbox, dos puntos de corte y micro-Sass. |
-| [Actividad_UD2](https://github.com/Pakete-123/Actividad_UD2) | DWEC · U.D. 2 | Calculadora de presupuestos para una copistería, con descuentos por umbral. En pareja con Rafael Hortelano Hernández. |
-
-## Contacto
-
-- Correo: [pablotl.dev@gmail.com](mailto:pablotl.dev@gmail.com)
-- GitHub: [@Pakete-123](https://github.com/Pakete-123)
+<!--
+  Perfil escrito como una pequeña API: cada tarjeta es la "respuesta" a una
+  petición (GET /me, OPTIONS /stack…). Los SVG se generan con los scripts de
+  scripts/ a partir de datos/perfil.json y GitHub Actions los regenera a diario.
+  El bloque HTML va sin líneas en blanco para que no aparezcan huecos entre
+  tarjetas.
+-->
+<div align="center">
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg"><img src="assets/banner-light.svg" width="100%" alt="Pablo Torrecilla. Desarrollador backend y web en formación: 2.º de DAM en el IES Lázaro Cárdenas y Técnico Superior en DAW. Madrid, España. Diagrama animado del recorrido de una petición de login en el proyecto intermodular: Angular, AdminMiddleware, AuthController y MySQL."></picture>
+<a href="mailto:pablotl.dev@gmail.com"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/contacto-email-dark.svg"><img src="assets/contacto-email-light.svg" width="50%" alt="Correo: pablotl.dev@gmail.com"></picture></a><a href="https://www.linkedin.com/in/pablo-torrecilla/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/contacto-linkedin-dark.svg"><img src="assets/contacto-linkedin-light.svg" width="50%" alt="LinkedIn: in/pablo-torrecilla"></picture></a>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/sobre-mi-dark.svg"><img src="assets/sobre-mi-light.svg" width="100%" alt="Sobre mí. Estudio 2.º de DAM en el IES Lázaro Cárdenas, con el Técnico Superior en DAW completado. Donde más disfruto es en el servidor: modelo de datos, control de acceso y APIs claras. He trabajado en equipo con ramas, pull requests y revisión de código."></picture>
+<a href="https://github.com/Jhonttt/proyecto-intermodular"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/destacado-dark.svg"><img src="assets/destacado-light.svg" width="100%" alt="Proyecto destacado: proyecto-intermodular, portal web para gestionar proyectos de estudiantes desarrollado en un equipo de más de diez personas con Angular, Laravel y Blade. Mi aportación: middleware de administración, parte del AuthController de la API, login y navegación del panel en Blade y un componente de botón en Angular. 40 commits y 18 pull requests, 15 de ellas integradas."></picture></a>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/trayectoria-dark.svg"><img src="assets/trayectoria-light.svg" width="100%" alt="Formación: Desarrollo de Aplicaciones Multiplataforma en el IES Lázaro Cárdenas (2026, en curso); Desarrollo de Aplicaciones Web, Técnico Superior (2024 a 2026)."></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/stack-dark.svg"><img src="assets/stack-light.svg" width="100%" alt="Stack por capas. Frontend: React, HTML5, CSS3 y Sass. Backend: Java, JavaScript, TypeScript y PHP. Databases: MySQL y PostgreSQL. Workflow: Git, GitHub, Vite, Composer y Maven."></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/actividad-dark.svg"><img src="assets/actividad-light.svg" width="100%" alt="Actividad en GitHub durante los últimos 12 meses, representada como un reloj anual con un trazo por día, junto a un resumen de rachas, el reparto por tipo de contribución, los repositorios con más commits y los lenguajes de mis repositorios públicos."></picture>
+<br><sub>SVG generados a partir de <a href="datos/perfil.json"><code>datos/perfil.json</code></a> · datos de actividad renovados cada hora con GitHub Actions</sub>
+</div>

@@ -1,0 +1,117 @@
+{
+  "_comentario": "Fuente de todo el perfil. Al cambiar algo aquí, el workflow 'Perfil' regenera los SVG.",
+  "usuario": "Pakete-123",
+  "nombre": "Pablo Torrecilla",
+  "prompt": "pablo@dam:~$",
+  "titular": "Desarrollador backend y web en formación",
+  "datos_banner": [
+    ["ubicacion", "Madrid, España"],
+    ["centro", "2.º DAM · IES Lázaro Cárdenas"],
+    ["enfoque", "Técnico Superior en DAW"]
+  ],
+  "sobre_mi": {
+    "texto": [
+      "Estudio el segundo curso de Desarrollo de Aplicaciones Multiplataforma en el IES Lázaro Cárdenas, con el título de Técnico Superior en Desarrollo de Aplicaciones Web ya completado.",
+      "Donde más disfruto es en el servidor: diseñar el modelo de datos, decidir quién puede acceder a qué y ofrecerlo a través de una API clara y fácil de mantener.",
+      "En los proyectos del ciclo he trabajado en equipo con ramas, pull requests y revisión de código, una forma de trabajar con la que me siento cómodo."
+    ],
+    "respuesta": [
+      ["nombre", "Pablo Torrecilla"],
+      ["curso", "2.º DAM"],
+      ["titulacion", "Técnico Superior en DAW"],
+      ["ubicacion", "Madrid, España"],
+      [
+        "enfoque",
+        ["backend", "web"]
+      ]
+    ]
+  },
+  "destacado": {
+    "repo": "Jhonttt/proyecto-intermodular",
+    "titulo": "proyecto-intermodular",
+    "insignia": "trabajo en equipo",
+    "texto": "Portal web desarrollado como proyecto intermodular de 2.º de DAW para publicar, consultar y gestionar proyectos de estudiantes. Lo construimos en un equipo de más de diez personas, con Angular en el frontend y Laravel con Blade en el backend. Mi aportación se centró en el panel de administración:",
+    "puntos": [
+      "Middleware que protege las rutas /admin y método isAdmin en el modelo User",
+      "Parte del AuthController de la API: inicio de sesión y verificación de usuarios",
+      "Login y barra de navegación del panel en Blade, alineados con la guía de estilos del frontend",
+      "Componente de botón reutilizable en Angular",
+      "Flujo con ramas feature → develop y pull requests revisadas antes de integrar"
+    ],
+    "cifras": [
+      ["40", "commits"],
+      ["18", "pull requests"],
+      ["15", "integradas"]
+    ],
+    "etiquetas": [
+      "Laravel",
+      "PHP",
+      "Blade",
+      "Angular",
+      "TypeScript",
+      "MySQL"
+    ]
+  },
+  "trayectoria": [
+    {
+      "periodo": "2026 — actualidad",
+      "actual": true,
+      "titulo": "Desarrollo de Aplicaciones Multiplataforma",
+      "lugar": "IES Lázaro Cárdenas · 2.º curso",
+      "texto": "Ciclo Formativo de Grado Superior, actualmente en curso."
+    },
+    {
+      "periodo": "2024 — 2026",
+      "titulo": "Desarrollo de Aplicaciones Web",
+      "lugar": "Técnico Superior",
+      "texto": "Formación full stack en programación, bases de datos, desarrollo en entorno cliente y servidor y diseño de interfaces. En este ciclo se desarrolló el proyecto intermodular.",
+      "etiquetas": [
+        "DWEC",
+        "DWES",
+        "DIW",
+        "BBDD"
+      ]
+    }
+  ],
+  "stack": [
+    {
+      "capa": "frontend",
+      "items": [
+        ["React", "react"],
+        ["HTML5", "html5"],
+        ["CSS3", "css3"],
+        ["Sass", "sass"]
+      ]
+    },
+    {
+      "capa": "backend",
+      "items": [
+        ["Java", "openjdk"],
+        ["JavaScript", "javascript"],
+        ["TypeScript", "typescript"],
+        ["PHP", "php"]
+      ]
+    },
+    {
+      "capa": "databases",
+      "items": [
+        ["MySQL", "mysql"],
+        ["PostgreSQL", "postgresql"]
+      ]
+    },
+    {
+      "capa": "workflow",
+      "items": [
+        ["Git", "git"],
+        ["GitHub", "github"],
+        ["Vite", "vite"],
+        ["Composer", "composer"],
+        ["Maven", "apachemaven"]
+      ]
+    }
+  ],
+  "contacto": {
+    "email": "pablotl.dev@gmail.com",
+    "linkedin": "pablo-torrecilla"
+  }
+}
