@@ -32,11 +32,11 @@ export const TEMAS = {
     tinta: "#e6e8eb",
     suave: "#959ba4",
     tenue: "#3a3f48",
-    acento: "#da666f",
+    acento: "#800517",
     acento2: "#aeb4bd",
     ok: "#3fb950",
     // tonos de rojo, de más intenso a más apagado
-    rojos: ["#da666f", "#a8505a", "#7a3c44", "#4f2a30"],
+    rojos: ["#800517", "#a33a47", "#6e2a32", "#45222a"],
   },
   light: {
     fondo: "#fdfafa",
@@ -46,10 +46,10 @@ export const TEMAS = {
     tinta: "#241b1c",
     suave: "#6e6162",
     tenue: "#cfbdbd",
-    acento: "#c94f4f",
+    acento: "#800517",
     acento2: "#8a7d7e",
     ok: "#1a7f37",
-    rojos: ["#c94f4f", "#d98585", "#e8b3b3", "#f3d9d9"],
+    rojos: ["#800517", "#a8434f", "#cf8a92", "#ebc9cd"],
   },
 };
 
