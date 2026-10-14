@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="200" viewBox="0 0 1000 200" role="img" aria-label="Pablo Torrecilla. Estudiante de 2.o de DAM, Tecnico Superior en DAW. Madrid, Espana.">
+  <rect width="1000" height="200" fill="#ffffff"/>
+  <rect x="0" y="0" width="1000" height="6" fill="#0969da"/>
+  <rect x="0" y="194" width="1000" height="6" fill="#0969da"/>
+  <text x="48" y="94" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="46" font-weight="700" fill="#1f2328">Pablo Torrecilla</text>
+  <text x="48" y="134" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="500" fill="#24292f">Estudiante de 2.º de DAM · Técnico Superior en DAW</text>
+  <text x="48" y="166" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a">IES Lázaro Cárdenas — Madrid, España</text>
+  <text x="952" y="166" text-anchor="end" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas, monospace" font-size="15" fill="#6e7781">Pakete-123</text>
+</svg>
