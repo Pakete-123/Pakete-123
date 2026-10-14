@@ -126,7 +126,7 @@ async function tarjetaActividad(tema, p, act, c, lng) {
       `Lenguajes: ${lng.lista.map(([l, x]) => `${l} ${(x * 100).toFixed(1)} %`).join(", ")}.`,
   );
   const t = lz.t;
-  const y0 = tarjeta(lz, "/activity/sync", `${fechaCorta(c.desde)} → ${fechaCorta(c.hasta)}`, "POST");
+  const y0 = tarjeta(lz, "/activity/sync", `200 OK · sincronizado el ${c.hasta.split("-").reverse().join("/")}`, "POST");
 
   // --- el año como un reloj ---
   const cx = 214;
