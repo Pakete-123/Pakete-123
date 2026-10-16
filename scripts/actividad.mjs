@@ -5,8 +5,8 @@
 //   que se cuentan los commits (de todas las ramas), pull requests e issues
 //   propios en los repositorios privados, también en los que se colabora
 //   (necesita un token personal), y se suman marcadas aparte;
-// - un resumen, los repositorios con más commits y los lenguajes de los
-//   repositorios públicos.
+// - un resumen, la actividad en repositorios públicos y privados y los
+//   lenguajes de los repositorios públicos.
 //
 // Token: en Actions, GITHUB_TOKEN recibe el secreto PROFILE_TOKEN (personal,
 // con lectura de los repos privados); sin acceso a ellos solo se ve lo público. En local:
@@ -180,7 +180,7 @@ const fechaCorta = (iso) => {
 };
 
 async function tarjetaActividad(tema, p, act, c, priv, lng) {
-  const alto = 740;
+  const alto = 662;
   const lz = new Lienzo(
     ANCHO, alto, tema, "Actividad en GitHub",
     `${c.total} contribuciones en los últimos 12 meses (${c.publicas} públicas y ${c.privadas} privadas), ` +
@@ -319,25 +319,22 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     lz.raw(lz.texto(x + tw / 2, fy + 53, k, "mono-pequeno", "suave", { anchor: "middle" }));
   });
 
-  // --- repositorios con más commits, a todo el ancho ---
+  // --- repositorios públicos y privados, solo dos filas ---
   const by = fy + 66 + 40;
   const anchoCol = ANCHO - 2 * M;
-  lz.raw(lz.texto(M, by, "repositorios con más actividad", "etiqueta", "suave"));
-  // El propio repositorio del perfil no cuenta: son commits de mantenimiento.
-  const lista = act.repos.filter(([nombre]) => nombre !== `${p.usuario}/${p.usuario}`);
-  if (priv.total) lista.push(["privados", priv.total]);
-  lista.sort((a, b) => b[1] - a[1]);
-  const top = lista.slice(0, 5);
-  const maxRepo = Math.max(1, ...top.map(([, v]) => v));
-  top.forEach(([nombre, v], i) => {
+  lz.raw(lz.texto(M, by, "actividad en repositorios", "etiqueta", "suave"));
+  const filas = [
+    ["públicos", c.publicas, colPub],
+    ["privados", c.privadas, colPriv],
+  ];
+  const maxFila = Math.max(1, ...filas.map(([, v]) => v));
+  filas.forEach(([nombre, v, color], i) => {
     const yy = by + 26 + i * 26;
-    const esPriv = !nombre.includes("/");
-    const et = esPriv ? nombre : nombre.split("/")[1];
-    lz.raw(lz.texto(M, yy, et, "pequeno", esPriv ? "suave" : "tinta"));
-    const bx = M + 290;
-    const bw = anchoCol - 290 - 40;
+    lz.raw(lz.texto(M, yy, nombre, "pequeno", "tinta"));
+    const bx = M + 140;
+    const bw = anchoCol - 140 - 40;
     lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1(bw)}" height="4" rx="2" fill="${t.rejilla}"/>`);
-    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1((v / maxRepo) * bw)}" height="4" rx="2" fill="${esPriv ? colPriv : colPub}"/>`);
+    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1((v / maxFila) * bw)}" height="4" rx="2" fill="${color}"/>`);
     lz.raw(lz.texto(M + anchoCol, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
   });
 
