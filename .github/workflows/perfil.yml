@@ -13,8 +13,8 @@ on:
       - "datos/**"
       - "scripts/**"
       - "assets/fuentes/**"
-      - "assets/tierra*"
       - "package*.json"
+      - ".github/workflows/perfil.yml"
   workflow_dispatch:
 
 permissions:
@@ -38,12 +38,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Comprobar cifras y privacidad
+        run: npm test
+
       - name: Banner y tarjetas
         run: npm run fichas && npm run banner
 
       - name: Actividad
         env:
-          GITHUB_TOKEN: ${{ secrets.PROFILE_TOKEN || secrets.GITHUB_TOKEN }}
+          # Credencial del usuario para incluir la actividad privada agregada.
+          # El token automático solo conoce este repositorio.
+          GITHUB_TOKEN: ${{ secrets.PROFILE_TOKEN }}
         run: npm run actividad
 
       - name: Guardar si ha cambiado algo

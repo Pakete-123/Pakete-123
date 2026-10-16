@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Generador de los SVG del perfil de GitHub",
   "scripts": {
+    "test": "node --test scripts/actividad.test.mjs",
     "fichas": "node scripts/fichas.mjs",
     "banner": "node scripts/banner.mjs",
     "actividad": "node scripts/actividad.mjs",
