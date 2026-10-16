@@ -1,5 +1,5 @@
 // Tarjeta de actividad con datos vivos de GitHub:
-// - una esfera que flota con el total del año y, alrededor, un anillo en perspectiva con
+// - una esfera que flota y gira con el total del año y, alrededor, un anillo en perspectiva con
 //   una barra por día (las de delante son las más recientes; hoy, en el centro);
 // - las contribuciones privadas: GitHub no las devuelve en su calendario, así
 //   que se cuentan los commits (de todas las ramas), pull requests e issues
@@ -209,7 +209,11 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   lz.css.push(
     "@keyframes sube{from{transform:scaleY(0)}to{transform:scaleY(1)}}" +
       ".b{transform-box:fill-box;transform-origin:50% 100%;animation:sube 1s cubic-bezier(.2,.8,.2,1) both}" +
-      "@media (prefers-reduced-motion:reduce){.b{animation:none}}",
+      "@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
+      ".en{animation:entra .7s cubic-bezier(.2,.8,.2,1) both}" +
+      "@keyframes llena{from{transform:scaleX(0)}to{transform:scaleX(1)}}" +
+      ".ll{transform-box:fill-box;transform-origin:0 50%;animation:llena 1.1s cubic-bezier(.2,.8,.2,1) both}" +
+      "@media (prefers-reduced-motion:reduce){.b,.en,.ll{animation:none}}",
   );
   lz.defs.push(
     `<radialGradient id="esfera" cx="0.5" cy="0.5" r="0.5" fx="0.34" fy="0.3">` +
@@ -221,9 +225,52 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       `<stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`,
   );
 
+  const yBola = cy - radio * 0.55;
+  lz.defs.push(
+    `<filter id="halo" x="-2" y="-2" width="5" height="5"><feGaussianBlur stdDeviation="3"/></filter>`,
+    `<clipPath id="bola"><circle cx="${cx}" cy="${f1(yBola)}" r="${radio}"/></clipPath>`,
+    `<clipPath id="atras"><rect x="0" y="0" width="${ANCHO}" height="${f1(cy)}"/></clipPath>`,
+    `<clipPath id="delante"><rect x="0" y="${f1(cy)}" width="${ANCHO}" height="${alto}"/></clipPath>`,
+  );
+
   // Públicas y privadas, con contraste suficiente en los dos temas.
   const colPub = tema === "dark" ? t.rojos[0] : t.acento;
   const colPriv = tema === "dark" ? t.rojos[1] : t.rojos[2];
+  // Paralelos fijos y meridianos que giran: la esfera parece rotar sobre su eje.
+  const rejillaBola = () => {
+    let g = `<g clip-path="url(#bola)" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.16">`;
+    for (const lat of [-50, -25, 0, 25, 50]) {
+      const rad = (lat * Math.PI) / 180;
+      const rx = radio * Math.cos(rad);
+      g += `<ellipse cx="${cx}" cy="${f1(yBola + radio * Math.sin(rad))}" rx="${f1(rx)}" ry="${f1(rx * 0.18)}"/>`;
+    }
+    const pasos = 24;
+    for (let m = 0; m < 4; m++) {
+      const fase = (m * Math.PI) / 4;
+      const valores = Array.from({ length: pasos + 1 }, (_, k) => f1(radio * Math.abs(Math.cos(fase + (k / pasos) * Math.PI))));
+      g +=
+        `<ellipse cx="${cx}" cy="${f1(yBola)}" rx="${valores[0]}" ry="${radio}">` +
+        `<animate attributeName="rx" values="${valores.join(";")}" dur="9s" repeatCount="indefinite"/></ellipse>`;
+    }
+    return g + "</g>";
+  };
+  // El total cuenta desde 0 al cargar (fotogramas que se van relevando).
+  const cuenta = (total, x, y) => {
+    const marcos = 16;
+    let g = "";
+    for (let k = 0; k <= marcos; k++) {
+      const v = Math.round(total * (1 - Math.pow(1 - k / marcos, 3)));
+      const ini = 0.2 + k * 0.07;
+      g +=
+        `<g opacity="${k === 0 ? 1 : 0}">` +
+        (k > 0 ? `<set attributeName="opacity" to="1" begin="${f1(ini)}s"/>` : "") +
+        (k < marcos ? `<set attributeName="opacity" to="0" begin="${f1(ini + 0.07)}s"/>` : "") +
+        lz.texto(x, y, String(v), "cifra", "#ffffff", { anchor: "middle" }) +
+        "</g>";
+    }
+    return g;
+  };
+
   // Barras: [x, ybase, alto, profundidad 0 (fondo) .. 1 (delante), privada?]
   const barras = act.dias.map((d, i) => {
     const a = ang(i);
@@ -239,7 +286,7 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     const w = 1.4 + b.prof * 1.6;
     const color = b.priv ? colPriv : colPub;
     return (
-      `<rect class="b" style="animation-delay:${f1(0.2 + (b.i / n) * 1.1)}s" x="${f1(b.x - w / 2)}" y="${f1(b.y - b.h)}" ` +
+      `<rect class="b" style="animation-delay:${f1(0.15 + ((n - 1 - b.i) / n) * 1.4)}s" x="${f1(b.x - w / 2)}" y="${f1(b.y - b.h)}" ` +
       `width="${f1(w)}" height="${f1(b.h)}" rx="${f1(w / 2)}" fill="${color}" opacity="${f1(0.4 + b.prof * 0.6)}"/>`
     );
   };
@@ -268,15 +315,28 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     }
     mesAnterior = mes;
   });
-  // Onda que sale del pie de la esfera y recorre el anillo, una y otra vez.
-  const onda = (attr, desde, hasta) =>
-    `<animate attributeName="${attr}" values="${desde};${hasta}" dur="4.5s" begin="1.4s" repeatCount="indefinite" ` +
-    `calcMode="spline" keyTimes="0;1" keySplines="0.2 0.6 0.3 1"/>`;
-  lz.raw(
-    `<ellipse cx="${cx}" cy="${f1(cy)}" rx="${radio}" ry="${f1(radio * 0.3)}" fill="none" stroke="${colPub}" stroke-width="1.5" opacity="0">` +
-      onda("rx", radio, R + 18) + onda("ry", f1(radio * 0.3), r + 6) + onda("opacity", 0.7, 0) + `</ellipse>`,
-  );
+  // Cometa con estela que recorre el anillo desde hoy hacia atrás en el tiempo.
+  // Se dibuja dos veces, recortado: la mitad del fondo queda detrás de la
+  // esfera y la de delante, encima de todo.
+  const vuelta = `M${cx} ${f1(cy + r)}A${R} ${r} 0 1 1 ${cx} ${f1(cy - r)}A${R} ${r} 0 1 1 ${cx} ${f1(cy + r)}`;
+  const colCometa = tema === "dark" ? "#ff9aa4" : "#c2414f";
+  const cometa = (recorte) => {
+    let g = `<g clip-path="url(#${recorte})">`;
+    g +=
+      `<circle r="7" fill="${colCometa}" opacity="0" filter="url(#halo)"><set attributeName="opacity" to="0.6" begin="1.8s"/>` +
+      `<animateMotion path="${vuelta}" dur="10s" begin="1.8s" repeatCount="indefinite"/></circle>`;
+    for (let k = 7; k >= 0; k--) {
+      const ini = f1(1.8 + k * 0.05);
+      const rad = k === 0 ? 3.4 : f1(3 - k * 0.3);
+      const op = k === 0 ? 1 : f1(0.75 - k * 0.09);
+      g +=
+        `<circle r="${rad}" fill="${colCometa}" opacity="0"><set attributeName="opacity" to="${op}" begin="${ini}s"/>` +
+        `<animateMotion path="${vuelta}" dur="10s" begin="${ini}s" repeatCount="indefinite"/></circle>`;
+    }
+    return g + "</g>";
+  };
   for (const b of detras) lz.raw(dibujaBarra(b));
+  lz.raw(cometa("atras"));
   // La esfera flota despacio; su sombra se encoge y se aclara cuando sube.
   const flota = `dur="4.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"`;
   lz.raw(
@@ -286,13 +346,15 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   );
   lz.raw(
     `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" ${flota}/>` +
-      `<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#esfera)"/>` +
-      `<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#brillo)"/>` +
-      lz.texto(cx, cy - radio * 0.55 + 4, String(c.total), "cifra", "#ffffff", { anchor: "middle" }) +
+      `<circle cx="${cx}" cy="${f1(yBola)}" r="${radio}" fill="url(#esfera)"/>` +
+      rejillaBola() +
+      `<circle cx="${cx}" cy="${f1(yBola)}" r="${radio}" fill="url(#brillo)"/>` +
+      cuenta(c.total, cx, yBola + 4) +
       lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
       `</g>`,
   );
   for (const b of delante) lz.raw(dibujaBarra(b));
+  lz.raw(cometa("delante"));
   // En el hueco, el año actual junto a hoy y el anterior junto al día más antiguo.
   const [gx, gy] = pos(Math.PI / 2 - hueco / 2);
   const anioIni = act.dias[0].fecha.slice(0, 4);
@@ -336,9 +398,13 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const tw = (ANCHO - 2 * M - 4 * 10) / 5;
   tiles.forEach(([v, k], i) => {
     const x = M + i * (tw + 10);
-    lz.raw(`<rect x="${f1(x)}" y="${fy}" width="${f1(tw)}" height="66" rx="4" fill="${t.panel}" stroke="${t.linea}"/>`);
-    lz.raw(lz.texto(x + tw / 2, fy + 34, v, "cifra", "tinta", { anchor: "middle" }));
-    lz.raw(lz.texto(x + tw / 2, fy + 53, k, "mono-pequeno", "suave", { anchor: "middle" }));
+    lz.raw(
+      `<g class="en" style="animation-delay:${f1(1.1 + i * 0.1)}s">` +
+        `<rect x="${f1(x)}" y="${fy}" width="${f1(tw)}" height="66" rx="4" fill="${t.panel}" stroke="${t.linea}"/>` +
+        lz.texto(x + tw / 2, fy + 34, v, "cifra", "tinta", { anchor: "middle" }) +
+        lz.texto(x + tw / 2, fy + 53, k, "mono-pequeno", "suave", { anchor: "middle" }) +
+        "</g>",
+    );
   });
 
   // --- repositorios públicos y privados, solo dos filas ---
@@ -356,7 +422,7 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     const bx = M + 140;
     const bw = anchoCol - 140 - 40;
     lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1(bw)}" height="4" rx="2" fill="${t.rejilla}"/>`);
-    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1((v / maxFila) * bw)}" height="4" rx="2" fill="${color}"/>`);
+    lz.raw(`<rect class="ll" style="animation-delay:${f1(1.6 + i * 0.15)}s" x="${bx}" y="${yy - 6}" width="${f1((v / maxFila) * bw)}" height="4" rx="2" fill="${color}"/>`);
     lz.raw(lz.texto(M + anchoCol, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
   });
 
@@ -370,7 +436,7 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const anchoBarra = ANCHO - 2 * M;
   lng.lista.forEach(([, v], i) => {
     const w = v * anchoBarra;
-    lz.raw(`<rect x="${f1(lx2)}" y="${lgy + 14}" width="${f1(Math.max(w - 3, 1.5))}" height="6" rx="2" fill="${colores[i]}"/>`);
+    lz.raw(`<rect class="ll" style="animation-delay:${f1(1.9 + i * 0.1)}s" x="${f1(lx2)}" y="${lgy + 14}" width="${f1(Math.max(w - 3, 1.5))}" height="6" rx="2" fill="${colores[i]}"/>`);
     lx2 += w;
   });
   lx2 = M;
