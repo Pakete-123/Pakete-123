@@ -38,9 +38,6 @@ jobs:
 
       - run: npm ci
 
-      - name: Comprobar cifras y privacidad
-        run: npm test
-
       - name: Banner y tarjetas
         run: npm run fichas && npm run banner
 

@@ -26,32 +26,6 @@
       ]
     ]
   },
-  "destacado": {
-    "repo": "Jhonttt/proyecto-intermodular",
-    "titulo": "proyecto-intermodular",
-    "insignia": "trabajo en equipo",
-    "texto": "Portal web desarrollado como proyecto intermodular de 2.º de DAW para publicar, consultar y gestionar proyectos de estudiantes. Lo construimos en un equipo de más de diez personas, con Angular en el frontend y Laravel con Blade en el backend. Mi aportación se centró en el panel de administración:",
-    "puntos": [
-      "Middleware que protege las rutas /admin y método isAdmin en el modelo User",
-      "Parte del AuthController de la API: inicio de sesión y verificación de usuarios",
-      "Login y barra de navegación del panel en Blade, alineados con la guía de estilos del frontend",
-      "Componente de botón reutilizable en Angular",
-      "Flujo con ramas feature → develop y pull requests revisadas antes de integrar"
-    ],
-    "cifras": [
-      ["40", "commits"],
-      ["18", "pull requests"],
-      ["15", "integradas"]
-    ],
-    "etiquetas": [
-      "Laravel",
-      "PHP",
-      "Blade",
-      "Angular",
-      "TypeScript",
-      "MySQL"
-    ]
-  },
   "trayectoria": [
     {
       "periodo": "2026 — actualidad",

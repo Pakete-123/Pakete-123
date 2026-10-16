@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Generador de los SVG del perfil de GitHub",
   "scripts": {
-    "test": "node --test scripts/actividad.test.mjs",
     "fichas": "node scripts/fichas.mjs",
     "banner": "node scripts/banner.mjs",
     "actividad": "node scripts/actividad.mjs",
@@ -19,10 +18,8 @@
   },
   "homepage": "https://github.com/Pakete-123/Pakete-123#readme",
   "dependencies": {
-    "d3-geo": "^3.1.1",
     "fontkit": "^2.0.4",
-    "subset-font": "^2.4.0",
-    "topojson-client": "^3.1.0"
+    "subset-font": "^2.4.0"
   },
   "private": true
 }

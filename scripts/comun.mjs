@@ -36,7 +36,7 @@ export const TEMAS = {
     acento2: "#aeb4bd",
     ok: "#3fb950",
     // tonos de rojo, de más intenso a más apagado
-    rojos: ["#800517", "#a33a47", "#6e2a32", "#45222a"],
+    rojos: ["#b8293b", "#e8838d", "#7a3c44", "#4f2a30"],
   },
   light: {
     fondo: "#fdfafa",
@@ -243,7 +243,15 @@ export function tarjeta(lz, ruta, meta = "", metodo = "GET") {
   lz.raw(`<rect x="28" y="25" width="${f1(mw)}" height="20" rx="3" fill="none" stroke="${t.acento}"/>`);
   lz.raw(lz.texto(34, 39.5, metodo, "seccion", "acento"));
   lz.raw(lz.texto(28 + mw + 10, 39.5, ruta, "seccion", "tinta"));
-  if (meta) lz.raw(lz.texto(w - 28, 39.5, meta, "meta", "suave", { anchor: "end" }));
+  if (meta) {
+    // Un estado HTTP al principio ("200 OK · …") va en verde, como respuesta correcta.
+    const estado = meta.match(/^[1-5]\d\d [A-Za-z ]+?(?= ·|$)/)?.[0];
+    const resto = estado ? meta.slice(estado.length) : meta;
+    lz.raw(
+      `<text x="${f1(w - 28)}" y="39.5" text-anchor="end">` +
+        (estado ? lz.tspan(estado, "meta", "ok") : "") + lz.tspan(resto, "meta", "suave") + `</text>`,
+    );
+  }
   lz.raw(`<line x1="28" y1="60.5" x2="${f1(w - 28)}" y2="60.5" stroke="${t.linea}"/>`);
   return 60;
 }

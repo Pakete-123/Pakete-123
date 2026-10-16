@@ -1,8 +1,5 @@
-// Tarjetas fijas del perfil: contacto, sobre mí, proyecto destacado,
-// formación y stack. Todo sale de datos/perfil.json.
-//
-// Son estáticas a propósito: el movimiento se reserva para el banner y la
-// tarjeta de actividad, donde cuenta algo.
+// Tarjetas fijas del perfil: contacto, sobre mí, formación y stack.
+// Todo sale de datos/perfil.json.
 
 import { ANCHO, Lienzo, datos, envolver, esc, f1, guardar, icono, medir, pildora, tarjeta } from "./comun.mjs";
 
@@ -34,7 +31,14 @@ async function contacto(tema, clave, etiqueta, valor, lado) {
     lado === "izq"
       ? `M${w} 0.5H${r + 0.5}Q0.5 0.5 0.5 ${r + 0.5}V${h - r - 0.5}Q0.5 ${h - 0.5} ${r + 0.5} ${h - 0.5}H${w}`
       : `M0 0.5H${w - r - 0.5}Q${w - 0.5} 0.5 ${w - 0.5} ${r + 0.5}V${h - r - 0.5}Q${w - 0.5} ${h - 0.5} ${w - r - 0.5} ${h - 0.5}H0`;
-  lz.raw(`<path d="${d}Z" fill="${t.panel}"/><path d="${d}" fill="none" stroke="${t.linea}"/>`);
+  lz.raw(`<path d="${d}Z" fill="${t.panel}"/>`);
+  // El icono, en grande y recortado por la tarjeta, como marca de agua al fondo.
+  lz.defs.push(`<clipPath id="recorte"><path d="${d}Z"/></clipPath>`);
+  lz.raw(
+    `<g clip-path="url(#recorte)"><g transform="translate(${w - 128} -6) scale(4.2)" fill="none" stroke="${t.acento}" ` +
+      `stroke-width="0.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.45">${ICONOS_CONTACTO[clave]}</g></g>`,
+  );
+  lz.raw(`<path d="${d}" fill="none" stroke="${t.linea}"/>`);
   if (lado === "der") lz.raw(`<line x1="0.5" y1="12" x2="0.5" y2="${h - 12}" stroke="${t.linea}"/>`);
   lz.raw(
     `<g transform="translate(${M} 20)" fill="none" stroke="${t.acento}" stroke-width="1.3" stroke-linecap="round" ` +
@@ -102,90 +106,6 @@ async function sobreMi(tema, p) {
 function jsonPlano(pares) {
   const v = (x) => (Array.isArray(x) ? `[${x.map((e) => `"${e}"`).join(", ")}]` : `"${x}"`);
   return ["{", ...pares.map(([k, x], i) => `  "${k}": ${v(x)}${i < pares.length - 1 ? "," : ""}`), "}"];
-}
-
-// --- proyecto destacado --------------------------------------------------
-
-// Archivos en los que trabajé, tal cual están en el repositorio.
-const ARBOL = [
-  "backend/app/",
-  "├─ Http/",
-  "│  ├─ Middleware/",
-  "│  │  └─ AdminMiddleware.php",
-  "│  └─ Controllers/Api/",
-  "│     └─ AuthController.php",
-  "└─ Models/User.php",
-  "backend/resources/views/",
-  "└─ admin/auth/",
-  "   └─ login.blade.php",
-];
-
-async function destacado(tema, p) {
-  const d = p.destacado;
-  const anchoTexto = 500;
-  const lineasTexto = envolver(d.texto, "cuerpo", anchoTexto);
-  const puntos = d.puntos.map((pt) => envolver(pt, "cuerpo", anchoTexto - 22));
-  const altoIzq = 34 + lineasTexto.length * 24 + 14 + puntos.reduce((a, l) => a + l.length * 23 + 6, 0) + 14 + 22;
-  const altoArbol = ARBOL.length * 21 + 46;
-  const altoDer = altoArbol + 14 + 62;
-  const alto = 60 + 26 + Math.max(altoIzq, altoDer) + 26;
-
-  const lz = new Lienzo(ANCHO, alto, tema, `Proyecto destacado: ${d.titulo}`, `${d.texto} ${d.puntos.join(". ")}.`);
-  const t = lz.t;
-  const y0 = tarjeta(lz, "/projects/featured", `github.com/${d.repo}`, "PUT");
-  let y = y0 + 44;
-  lz.raw(lz.texto(M, y, d.titulo, "titulo"));
-  lz.raw(pildora(lz, M + medir(d.titulo, "titulo") + 12, y - 16, d.insignia)[0]);
-  y += 30;
-  for (const l of lineasTexto) {
-    lz.raw(lz.texto(M, y, l, "cuerpo", "suave"));
-    y += 24;
-  }
-  y += 10;
-  for (const lineas of puntos) {
-    lz.raw(`<rect x="${M + 1}" y="${y - 8}" width="6" height="6" rx="1" fill="${t.suave}"/>`);
-    for (const l of lineas) {
-      lz.raw(lz.texto(M + 22, y, l, "cuerpo"));
-      y += 23;
-    }
-    y += 6;
-  }
-  y += 8;
-  let x = M;
-  for (const e of d.etiquetas) {
-    const [svg, w] = pildora(lz, x, y, e);
-    lz.raw(svg);
-    x += w + 8;
-  }
-
-  // Árbol con los archivos en los que trabajé y cifras debajo: el bloque se
-  // centra en vertical respecto al texto y el árbol, en horizontal en su panel.
-  const ax = M + anchoTexto + 40;
-  const aw = ANCHO - M - ax;
-  const ay = y0 + 28 + (alto - 26 - (y0 + 28) - altoDer) / 2;
-  const anchoArbol = Math.max(...ARBOL.map((l) => medir(l, "etiqueta")), medir("archivos en los que trabajé", "mono-pequeno"));
-  const tx = ax + (aw - anchoArbol) / 2;
-  lz.raw(`<rect x="${ax}" y="${f1(ay)}" width="${aw}" height="${altoArbol}" rx="4" fill="${t.panel}" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(tx, ay + 24, "archivos en los que trabajé", "mono-pequeno", "suave"));
-  ARBOL.forEach((linea, i) => {
-    const rama = linea.match(/^[│├└─\s]*/)[0];
-    const nombre = linea.slice(rama.length);
-    let txt = "";
-    if (rama) txt += lz.tspan(rama, "etiqueta", "tenue");
-    txt += lz.tspan(nombre, "etiqueta", nombre.endsWith("/") ? "suave" : "tinta");
-    lz.raw(`<text x="${f1(tx)}" y="${f1(ay + 48 + i * 21)}" xml:space="preserve">${txt}</text>`);
-  });
-
-  // Cifras debajo del árbol.
-  const cy = ay + altoArbol + 14;
-  const cw = (aw - 2 * 8) / 3;
-  d.cifras.forEach(([v, k], i) => {
-    const cx = ax + i * (cw + 8);
-    lz.raw(`<rect x="${f1(cx)}" y="${f1(cy)}" width="${f1(cw)}" height="62" rx="4" fill="${t.panel}" stroke="${t.linea}"/>`);
-    lz.raw(lz.texto(cx + cw / 2, cy + 32, v, "cifra", i === 0 ? "acento" : "tinta", { anchor: "middle" }));
-    lz.raw(lz.texto(cx + cw / 2, cy + 50, k, "mono-pequeno", "suave", { anchor: "middle" }));
-  });
-  return lz.render();
 }
 
 // --- formación: como un git log --graph -----------------------------------
@@ -374,7 +294,6 @@ const p = datos();
 await porTema("contacto-email", (tm) => contacto(tm, "email", "correo", p.contacto.email, "izq"));
 await porTema("contacto-linkedin", (tm) => contacto(tm, "linkedin", "linkedin", `in/${p.contacto.linkedin}`, "der"));
 await porTema("sobre-mi", (tm) => sobreMi(tm, p));
-await porTema("destacado", (tm) => destacado(tm, p));
 await porTema("trayectoria", (tm) => trayectoria(tm, p));
 await porTema("stack", (tm) => stack(tm, p));
 console.log("fichas listas");

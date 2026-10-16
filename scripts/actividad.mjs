@@ -1,182 +1,364 @@
-// Actividad agregada: los datos privados solo participan en las cifras.
-import { pathToFileURL } from "node:url";
-import { ANCHO, Lienzo, datos, f1, guardar, medir } from "./comun.mjs";
-import { circular3d, COLORES } from "./circular3d.mjs";
+// Tarjeta de actividad con datos vivos de GitHub:
+// - una esfera con el total del año y, alrededor, un anillo en perspectiva con
+//   una barra por día (las de delante son las más recientes; hoy, en el centro);
+// - las contribuciones privadas: GitHub no las devuelve en su calendario, así
+//   que se cuentan los commits propios en los repositorios privados (necesita
+//   un token personal) y se suman, marcadas aparte;
+// - un resumen, el reparto por tipo, los repositorios con más commits y los
+//   lenguajes de los repositorios públicos.
+//
+// Token: en Actions, GITHUB_TOKEN recibe el secreto PROFILE_TOKEN (personal,
+// con lectura de los repos privados); sin acceso a ellos solo se ve lo público. En local:
+// `GITHUB_TOKEN=$(gh auth token) node scripts/actividad.mjs`.
+
+import { ANCHO, Lienzo, datos, f1, guardar, medir, tarjeta } from "./comun.mjs";
 
 const API = "https://api.github.com";
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const COLOR_LENGUAJE = { TypeScript: "#3178c6", JavaScript: "#f1e05a", CSS: "#663399", HTML: "#e34c26", SCSS: "#c6538c", PHP: "#4f5d95", Java: "#b07219", Blade: "#f7523f", Vue: "#41b883", Python: "#3572a5" };
+const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const M = 28;
+// Colores oficiales de cada lenguaje en GitHub (linguist).
+const COLOR_LENGUAJE = {
+  TypeScript: "#3178c6",
+  JavaScript: "#f1e05a",
+  CSS: "#663399",
+  HTML: "#e34c26",
+  SCSS: "#c6538c",
+  PHP: "#4f5d95",
+  Java: "#b07219",
+  Blade: "#f7523f",
+  Vue: "#41b883",
+  Python: "#3572a5",
+};
+
+const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+if (!token) {
+  console.error("Falta un token. En local: GITHUB_TOKEN=$(gh auth token) node scripts/actividad.mjs");
+  process.exit(1);
+}
 
 async function peticion(url, cuerpo) {
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (!token) throw new Error("Falta GITHUB_TOKEN o GH_TOKEN. Configura PROFILE_TOKEN en GitHub Actions.");
   const r = await fetch(url, {
     method: cuerpo ? "POST" : "GET",
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "perfil-pakete-123" },
   });
-  if (!r.ok) throw new Error(`GitHub: HTTP ${r.status}`);
-  const json = await r.json();
-  if (json.errors) throw new Error("GitHub no pudo devolver los datos de actividad; comprueba los permisos del token.");
-  return json;
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+  return r.json();
 }
 
-export function resumirContribuciones(c, desde, hasta) {
-  const dias = c.contributionCalendar.weeks.flatMap(s => s.contributionDays)
-    .filter(d => d.date >= desde && d.date <= hasta)
-    .map(d => ({ fecha: d.date, n: d.contributionCount }));
-  const total = dias.reduce((s, d) => s + d.n, 0);
-  const tipos = [
-    ["Commits", c.totalCommitContributions],
-    ["Pull requests", c.totalPullRequestContributions],
-    ["Revisiones", c.totalPullRequestReviewContributions],
-    ["Issues", c.totalIssueContributions],
-  ];
-  // El calendario ya incluye la actividad privada autorizada. No volver a
-  // sumar restrictedContributionsCount: duplicaría esas contribuciones.
-  // Incluye también creaciones de repositorios y actividad sin tipo visible.
-  const otras = total - tipos.reduce((s, [, n]) => s + n, 0);
-  if (otras < 0) throw new Error("El calendario y el desglose de GitHub no coinciden; se conserva la tarjeta anterior.");
-  tipos.push(["Otras", otras]);
-  return { dias, tipos };
-}
-
-export async function contribuciones(usuario, ahora = new Date()) {
-  const hasta = ahora.toISOString().slice(0, 10);
-  const inicio = new Date(`${hasta}T00:00:00Z`);
-  inicio.setUTCDate(inicio.getUTCDate() - 364);
-  const desde = inicio.toISOString().slice(0, 10);
+async function contribuciones(usuario) {
   const r = await peticion(`${API}/graphql`, {
-    query: `query($u: String!, $from: DateTime!, $to: DateTime!) {
-      user(login: $u) { contributionsCollection(from: $from, to: $to) {
-        totalCommitContributions totalPullRequestContributions
-        totalPullRequestReviewContributions totalIssueContributions
-        contributionCalendar { weeks { contributionDays { date contributionCount } } }
-      } }
-    }`,
-    variables: { u: usuario, from: inicio.toISOString(), to: ahora.toISOString() },
+    query: `query($u: String!) { user(login: $u) { contributionsCollection {
+      totalCommitContributions totalPullRequestContributions totalPullRequestReviewContributions totalIssueContributions
+      commitContributionsByRepository(maxRepositories: 100) { repository { nameWithOwner } contributions { totalCount } }
+      contributionCalendar { weeks { contributionDays { date contributionCount weekday } } } } } }`,
+    variables: { u: usuario },
   });
-  if (!r.data?.user) throw new Error("No se encontró el perfil de GitHub.");
-  return resumirContribuciones(r.data.user.contributionsCollection, desde, hasta);
+  if (r.errors) throw new Error(JSON.stringify(r.errors));
+  const c = r.data.user.contributionsCollection;
+  return {
+    // El calendario de GitHub empieza en el domingo de hace algo más de un año;
+    // aquí se recorta a los últimos 365 días exactos, terminando hoy.
+    dias: c.contributionCalendar.weeks
+      .flatMap((s) => s.contributionDays.map((d) => ({ fecha: d.date, n: d.contributionCount, priv: 0, dia: d.weekday })))
+      .slice(-365),
+    tipos: [
+      ["commits", c.totalCommitContributions],
+      ["pull requests", c.totalPullRequestContributions],
+      ["revisiones", c.totalPullRequestReviewContributions],
+      ["issues", c.totalIssueContributions],
+    ],
+    repos: c.commitContributionsByRepository.map((x) => [x.repository.nameWithOwner, x.contributions.totalCount]),
+  };
 }
 
-export async function lenguajes(usuario) {
+/** Commits propios en repositorios privados, por día. Vacío si el token no llega. */
+async function privadas(usuario, desde, yaContados) {
+  let repos;
+  try {
+    repos = await peticion(`${API}/user/repos?visibility=private&affiliation=owner,collaborator,organization_member&per_page=100`);
+  } catch {
+    console.warn("Sin acceso a repos privados (revisa PROFILE_TOKEN): solo se muestran contribuciones públicas.");
+    return { porDia: new Map(), total: 0, repos: 0 };
+  }
+  const porDia = new Map();
+  let total = 0;
+  let conCommits = 0;
+  for (const repo of repos) {
+    if (yaContados.has(repo.full_name)) continue; // GitHub ya los cuenta: no duplicar
+    let n = 0;
+    for (let pag = 1; ; pag++) {
+      const commits = await peticion(
+        `${API}/repos/${repo.full_name}/commits?author=${usuario}&since=${desde}T00:00:00Z&per_page=100&page=${pag}`,
+      ).catch(() => []);
+      for (const c of commits) {
+        const fecha = c.commit.author.date.slice(0, 10);
+        porDia.set(fecha, (porDia.get(fecha) ?? 0) + 1);
+        n++;
+      }
+      if (commits.length < 100) break;
+    }
+    total += n;
+    if (n) conCommits++;
+  }
+  return { porDia, total, repos: conCommits };
+}
+
+async function lenguajes(usuario) {
+  const repos = await peticion(`${API}/users/${usuario}/repos?per_page=100&type=owner`);
   const total = new Map();
   let contados = 0;
-  for (let page = 1; ; page++) {
-    const lote = await peticion(`${API}/users/${encodeURIComponent(usuario)}/repos?type=owner&per_page=100&page=${page}`);
-    for (const repo of lote) {
-      // Filtrar antes de consultar lenguajes: ninguna ruta privada se utiliza.
-      if (repo.private || repo.visibility === "internal" || repo.fork || repo.name.toLowerCase() === usuario.toLowerCase()) continue;
-      contados++;
-      const ls = await peticion(repo.languages_url);
-      for (const [l, b] of Object.entries(ls)) total.set(l, (total.get(l) ?? 0) + b);
-    }
-    if (lote.length < 100) break;
+  for (const repo of repos) {
+    if (repo.fork || repo.name === usuario) continue;
+    contados++;
+    const ls = await peticion(repo.languages_url);
+    for (const [l, b] of Object.entries(ls)) total.set(l, (total.get(l) ?? 0) + b);
   }
   const suma = [...total.values()].reduce((a, b) => a + b, 0) || 1;
   let lista = [...total].sort((a, b) => b[1] - a[1]).map(([l, b]) => [l, b / suma]);
-  if (lista.length > 5) lista = [...lista.slice(0, 4), ["Otros", lista.slice(4).reduce((a, [, x]) => a + x, 0)]];
+  if (lista.length > 5) {
+    const resto = lista.slice(4).reduce((a, [, x]) => a + x, 0);
+    lista = [...lista.slice(0, 4), ["Otros", resto]];
+  }
   return { lista, repos: contados };
 }
 
-export function cifras(dias) {
-  if (!dias.length) throw new Error("GitHub no devolvió el calendario de actividad.");
-  const total = dias.reduce((a, d) => a + d.n, 0);
-  const activos = dias.filter(d => d.n > 0).length;
-  let larga = 0, r = 0;
+function cifras(dias) {
+  const n = (d) => d.n + d.priv;
+  const total = dias.reduce((a, d) => a + n(d), 0);
+  const privadas = dias.reduce((a, d) => a + d.priv, 0);
+  const activos = dias.filter((d) => n(d) > 0).length;
+  let larga = 0;
+  let r = 0;
   for (const d of dias) {
-    r = d.n > 0 ? r + 1 : 0;
+    r = n(d) > 0 ? r + 1 : 0;
     larga = Math.max(larga, r);
   }
-  let actual = 0, i = dias.length - 1;
-  if (dias[i]?.n === 0) i--;
-  while (i >= 0 && dias[i].n > 0) { actual++; i--; }
-  const mejor = dias.reduce((a, d) => d.n > a.n ? d : a, dias[0]);
-  return { total, activos, larga, actual, mejor, hasta: dias.at(-1).fecha };
+  // Racha actual: si hoy aún no hay nada, se cuenta desde ayer.
+  let actual = 0;
+  let i = dias.length - 1;
+  if (dias[i] && n(dias[i]) === 0) i--;
+  while (i >= 0 && n(dias[i]) > 0) {
+    actual++;
+    i--;
+  }
+  const mejor = dias.reduce((a, d) => (n(d) > n(a) ? d : a), dias[0]);
+  const porDia = Array(7).fill(0);
+  for (const d of dias) porDia[d.dia] += n(d);
+  const favorito = DIAS[porDia.indexOf(Math.max(...porDia))];
+  return { total, privadas, publicas: total - privadas, activos, larga, actual, mejor, favorito, hasta: dias.at(-1).fecha };
 }
 
-const fechaCorta = (iso, anio = true) => {
-  const [a, m, d] = iso.split("-").map(Number);
-  return `${d} ${MESES[m - 1]}${anio ? ` ${a}` : ""}`;
+const fechaCorta = (iso) => {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${MESES[m - 1]}`;
 };
-const diasTexto = n => `${n} ${n === 1 ? "día" : "días"}`;
 
-export async function tarjetaActividad(tema, act, c, lng) {
-  const alto = 570;
-  const lz = new Lienzo(ANCHO, alto, tema, "Actividad en GitHub · contribuciones",
-    `${c.total} contribuciones en ${act.dias.length} días, representadas en un gráfico circular 3D. ` +
-    `${act.tipos.map(([l, n]) => `${l}: ${n}`).join(". ")}. ${c.activos} días activos. ` +
-    `Lenguajes de ${lng.repos} repositorios públicos.`);
+async function tarjetaActividad(tema, p, act, c, priv, lng) {
+  const alto = 760;
+  const lz = new Lienzo(
+    ANCHO, alto, tema, "Actividad en GitHub",
+    `${c.total} contribuciones en los últimos 12 meses (${c.publicas} públicas y ${c.privadas} privadas), ` +
+      `${c.activos} días con actividad y una racha máxima de ${c.larga} días. ` +
+      `Lenguajes: ${lng.lista.map(([l, x]) => `${l} ${(x * 100).toFixed(1)} %`).join(", ")}.`,
+  );
   const t = lz.t;
-  lz.defs.push(`<linearGradient id="panel3d" x2=".8" y2="1"><stop stop-color="${t.panel}"/><stop offset="1" stop-color="${t.fondo}"/></linearGradient>`);
-  lz.raw(`<rect x="3" y="8" width="854" height="${alto - 9}" rx="16" fill="${t.tenue}" opacity=".38"/><rect x=".5" y=".5" width="859" height="${alto - 12}" rx="16" fill="url(#panel3d)" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(28, 35, "POST", "seccion", "acento"));
-  lz.raw(lz.texto(79, 35, "/activity/sync", "seccion"));
-  lz.raw(`<circle cx="603" cy="30" r="3" fill="${t.ok}"/>`);
-  lz.raw(lz.texto(832, 35, `sincronizado · ${fechaCorta(c.hasta)}`, "meta", "suave", { anchor: "end" }));
-  lz.raw(`<path d="M28 55H832" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(32, 87, "01 / CONTRIBUCIONES", "meta", "suave"));
-  lz.raw(lz.texto(32, 112, "Un año de actividad, contribución a contribución.", "pequeno", "suave"));
-  circular3d(lz, act.tipos, c.total, act.dias.length);
-  lz.raw(lz.texto(220, 432, `${c.activos} días con actividad`, "pequeno-fuerte", "tinta", { anchor: "middle" }));
-  lz.raw(lz.texto(220, 451, "Cada sector representa un tipo de contribución", "mono-pequeno", "suave", { anchor: "middle" }));
+  const y0 = tarjeta(lz, "/activity/sync", `200 OK · sincronizado el ${c.hasta.split("-").reverse().join("/")}`, "POST");
 
-  const rx = 446;
-  lz.raw(lz.texto(rx, 87, "02 / EN CIFRAS", "meta", "suave"));
-  let y = 121;
-  for (const [label, value] of [
-    ["Días con actividad", `${c.activos} de ${act.dias.length}`],
-    ["Racha más larga", diasTexto(c.larga)],
-    ["Racha actual", diasTexto(c.actual)],
-    ["Mejor día", c.total ? `${fechaCorta(c.mejor.fecha, false)} · ${c.mejor.n}` : "Sin actividad"],
-  ]) {
-    lz.raw(lz.texto(rx, y, label, "pequeno", "suave"));
-    lz.raw(lz.texto(832, y, value, "pequeno-fuerte", "tinta", { anchor: "end" }));
-    lz.raw(`<path d="M${rx} ${y + 10}H832" stroke="${t.linea}"/>`);
-    y += 29;
+  // --- la escena: esfera y anillo de días en perspectiva ---
+  const cx = ANCHO / 2;
+  const cy = y0 + 190;
+  const R = 330; // semieje horizontal del anillo
+  const r = 64; // semieje vertical (inclinación)
+  const hMax = 92;
+  const radio = 70; // de la esfera
+  const n = act.dias.length;
+  const max = Math.max(1, ...act.dias.map((d) => d.n + d.priv));
+  // Hoy queda delante, en el centro; los días anteriores se alejan hacia atrás.
+  const ang = (i) => Math.PI / 2 + ((n - 1 - i) / n) * Math.PI * 2;
+  const pos = (a) => [cx + Math.cos(a) * R, cy + Math.sin(a) * r];
+
+  lz.css.push(
+    "@keyframes sube{from{transform:scaleY(0)}to{transform:scaleY(1)}}" +
+      ".b{transform-box:fill-box;transform-origin:50% 100%;animation:sube 1s cubic-bezier(.2,.8,.2,1) both}" +
+      "@media (prefers-reduced-motion:reduce){.b{animation:none}}",
+  );
+  lz.defs.push(
+    `<radialGradient id="esfera" cx="0.5" cy="0.5" r="0.5" fx="0.34" fy="0.3">` +
+      `<stop offset="0" stop-color="#e0606c"/><stop offset="0.35" stop-color="${"#a3162a"}"/>` +
+      `<stop offset="0.8" stop-color="#800517"/><stop offset="1" stop-color="#3d0209"/></radialGradient>`,
+    `<radialGradient id="brillo" cx="0.36" cy="0.28" r="0.3"><stop offset="0" stop-color="#fff" stop-opacity="0.45"/>` +
+      `<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`,
+    `<radialGradient id="sombra" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000" stop-opacity="${tema === "dark" ? 0.55 : 0.18}"/>` +
+      `<stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`,
+  );
+
+  // Públicas y privadas, con contraste suficiente en los dos temas.
+  const colPub = tema === "dark" ? t.rojos[0] : t.acento;
+  const colPriv = tema === "dark" ? t.rojos[1] : t.rojos[2];
+  // Barras: [x, ybase, alto, profundidad 0 (fondo) .. 1 (delante), privada?]
+  const barras = act.dias.map((d, i) => {
+    const a = ang(i);
+    const [x, y] = pos(a);
+    const total = d.n + d.priv;
+    const h = total ? 6 + Math.sqrt(total / max) * (hMax - 6) : 0;
+    return { x, y, h, prof: (Math.sin(a) + 1) / 2, priv: d.priv > 0 && d.priv >= d.n, i, d };
+  });
+  const dibujaBarra = (b) => {
+    if (!b.h) {
+      return `<circle cx="${f1(b.x)}" cy="${f1(b.y)}" r="${f1(0.8 + b.prof * 0.6)}" fill="${t.tenue}" opacity="${f1(0.35 + b.prof * 0.65)}"/>`;
+    }
+    const w = 1.4 + b.prof * 1.6;
+    const color = b.priv ? colPriv : colPub;
+    return (
+      `<rect class="b" style="animation-delay:${f1(0.2 + (b.i / n) * 1.1)}s" x="${f1(b.x - w / 2)}" y="${f1(b.y - b.h)}" ` +
+      `width="${f1(w)}" height="${f1(b.h)}" rx="${f1(w / 2)}" fill="${color}" opacity="${f1(0.4 + b.prof * 0.6)}"/>`
+    );
+  };
+  const detras = barras.filter((b) => b.prof < 0.5).sort((a, b) => a.y - b.y);
+  const delante = barras.filter((b) => b.prof >= 0.5).sort((a, b) => a.y - b.y);
+
+  // suelo: elipses guía
+  lz.raw(`<ellipse cx="${cx}" cy="${f1(cy)}" rx="${R + 18}" ry="${r + 6}" fill="none" stroke="${t.rejilla}"/>`);
+  lz.raw(`<ellipse cx="${cx}" cy="${f1(cy)}" rx="${R}" ry="${r}" fill="none" stroke="${t.linea}"/>`);
+  lz.raw(`<ellipse cx="${cx}" cy="${f1(cy)}" rx="${R - 18}" ry="${r - 4}" fill="none" stroke="${t.rejilla}"/>`);
+  // meses, por fuera del anillo
+  let mesAnterior = -1;
+  act.dias.forEach((d, i) => {
+    const mes = Number(d.fecha.split("-")[1]) - 1;
+    if (mes !== mesAnterior) {
+      const diasEnRango = act.dias.filter((x) => x.fecha.slice(0, 7) === d.fecha.slice(0, 7)).length;
+      const a = ang(i + diasEnRango / 2);
+      const prof = (Math.sin(a) + 1) / 2;
+      const x = cx + Math.cos(a) * (R + 40);
+      const y = cy + Math.sin(a) * (r + 22) + 4;
+      if (diasEnRango >= 20) {
+        lz.raw(
+          `<g opacity="${f1(0.45 + prof * 0.55)}">${lz.texto(x, y, MESES[mes], "mono-pequeno", "suave", { anchor: "middle" })}</g>`,
+        );
+      }
+    }
+    mesAnterior = mes;
+  });
+  for (const b of detras) lz.raw(dibujaBarra(b));
+  // la esfera, con su sombra en el suelo
+  lz.raw(`<ellipse cx="${cx}" cy="${f1(cy + 6)}" rx="${radio * 1.15}" ry="${radio * 0.32}" fill="url(#sombra)"/>`);
+  lz.raw(`<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#esfera)"/>`);
+  lz.raw(`<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#brillo)"/>`);
+  lz.raw(lz.texto(cx, cy - radio * 0.55 + 4, String(c.total), "cifra", "#ffffff", { anchor: "middle" }));
+  lz.raw(lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }));
+  for (const b of delante) lz.raw(dibujaBarra(b));
+  // hoy
+  const [hx, hy] = pos(ang(n - 1));
+  lz.raw(`<circle cx="${f1(hx)}" cy="${f1(hy + 10)}" r="2.5" fill="${t.acento}"/>`);
+  lz.raw(lz.texto(hx, hy + 26, "hoy", "mono-pequeno", "suave", { anchor: "middle" }));
+  // leyenda de la escena
+  const ly = cy + r + 58;
+  const leyenda = [
+    [colPub, `públicas ${c.publicas}`],
+    [colPriv, `privadas ${c.privadas}`],
+  ];
+  const anchoLeyenda = leyenda.reduce((a, [, s]) => a + 14 + medir(s, "mono-pequeno") + 20, -20);
+  let lx = cx - anchoLeyenda / 2;
+  for (const [col, s] of leyenda) {
+    lz.raw(`<rect x="${f1(lx)}" y="${ly - 8}" width="8" height="8" rx="1.5" fill="${col}"/>`);
+    lz.raw(lz.texto(lx + 14, ly, s, "mono-pequeno", "suave"));
+    lx += 14 + medir(s, "mono-pequeno") + 20;
   }
-  lz.raw(lz.texto(rx, 250, "contribuciones por tipo", "etiqueta", "suave"));
-  lz.raw(lz.texto(832, 250, "% del total", "mono-pequeno", "suave", { anchor: "end" }));
-  act.tipos.forEach(([label, value], i) => {
-    const yy = 282 + i * 32;
-    lz.raw(`<rect x="${rx}" y="${yy - 9}" width="8" height="8" rx="2" fill="${COLORES[tema][i]}"/>`);
-    lz.raw(lz.texto(rx + 18, yy, label, "pequeno"));
-    lz.raw(lz.texto(748, yy, String(value), "pequeno-fuerte", "tinta", { anchor: "end" }));
-    const porcentaje = c.total ? value / c.total * 100 : 0;
-    lz.raw(lz.texto(832, yy, `${porcentaje.toFixed(1).replace(".", ",")} %`, "mono-pequeno", "suave", { anchor: "end" }));
+
+  // --- cifras en fila, centradas ---
+  const fy = ly + 22;
+  const tiles = [
+    [`${c.activos}`, "días con actividad"],
+    [`${c.larga} d`, "racha más larga"],
+    [`${c.actual} d`, "racha actual"],
+    [fechaCorta(c.mejor.fecha), `mejor día · ${c.mejor.n + c.mejor.priv}`],
+    [c.favorito, "día más activo"],
+  ];
+  const tw = (ANCHO - 2 * M - 4 * 10) / 5;
+  tiles.forEach(([v, k], i) => {
+    const x = M + i * (tw + 10);
+    const numerico = /^\d+( d)?$/.test(v);
+    lz.raw(`<rect x="${f1(x)}" y="${fy}" width="${f1(tw)}" height="66" rx="4" fill="${t.panel}" stroke="${t.linea}"/>`);
+    lz.raw(lz.texto(x + tw / 2, fy + 34, v, numerico ? "cifra" : "titulo", "tinta", { anchor: "middle" }));
+    lz.raw(lz.texto(x + tw / 2, fy + 53, k, "mono-pequeno", "suave", { anchor: "middle" }));
   });
 
-  lz.raw(`<path d="M28 478H832" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(28, 503, "lenguajes", "etiqueta", "suave"));
-  lz.raw(lz.texto(832, 503, `${lng.repos} repositorios públicos`, "mono-pequeno", "suave", { anchor: "end" }));
-  let x = 28;
-  for (const [l, v] of lng.lista) {
-    const w = v * 804, color = COLOR_LENGUAJE[l] ?? t.suave;
-    lz.raw(`<rect x="${f1(x)}" y="518" width="${f1(Math.max(.5, w - 2))}" height="7" rx="2" fill="${color}"/>`);
+  // --- por tipo y repositorios, en dos columnas ---
+  const by = fy + 66 + 40;
+  const colW = (ANCHO - 2 * M - 40) / 2;
+  const x2 = M + colW + 40;
+  lz.raw(lz.texto(M, by, "por tipo", "etiqueta", "suave"));
+  const tipos = act.tipos.map(([k, v]) => (k === "commits" ? [k, v + c.privadas] : [k, v]));
+  const totalTipos = tipos.reduce((a, [, v]) => a + v, 0) || 1;
+  let x = M;
+  tipos.forEach(([, v], i) => {
+    const w = (v / totalTipos) * colW;
+    if (w > 0) lz.raw(`<rect x="${f1(x)}" y="${by + 14}" width="${f1(Math.max(w - 2, 1))}" height="8" rx="1.5" fill="${t.rojos[i]}"/>`);
     x += w;
-  }
-  x = 28;
-  for (const [l, v] of lng.lista) {
-    const label = `${l} ${(v * 100).toFixed(1).replace(".", ",")} %`;
-    lz.raw(`<rect x="${f1(x)}" y="539" width="7" height="7" rx="1" fill="${COLOR_LENGUAJE[l] ?? t.suave}"/>`);
-    lz.raw(lz.texto(x + 13, 546, label, "mono-pequeno"));
-    x += medir(label, "mono-pequeno") + 34;
-  }
-  if (!lng.lista.length) lz.raw(lz.texto(28, 536, "Sin datos de lenguajes públicos", "pequeno", "suave"));
+  });
+  tipos.forEach(([k, v], i) => {
+    const yy = by + 46 + i * 24;
+    lz.raw(`<rect x="${M}" y="${yy - 8}" width="8" height="8" rx="1.5" fill="${t.rojos[i]}"/>`);
+    lz.raw(lz.texto(M + 16, yy, k, "pequeno", "tinta"));
+    lz.raw(lz.texto(M + colW, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
+  });
+
+  lz.raw(lz.texto(x2, by, "repositorios con más commits", "etiqueta", "suave"));
+  // El propio repositorio del perfil no cuenta: son commits de mantenimiento.
+  const lista = act.repos.filter(([nombre]) => nombre !== `${p.usuario}/${p.usuario}`);
+  if (priv.total) lista.push([`privados (${priv.repos})`, priv.total]);
+  lista.sort((a, b) => b[1] - a[1]);
+  const top = lista.slice(0, 5);
+  const maxRepo = Math.max(1, ...top.map(([, v]) => v));
+  top.forEach(([nombre, v], i) => {
+    const yy = by + 22 + i * 24;
+    let et = nombre.includes("/") ? nombre.split("/")[1] : nombre;
+    const original = et;
+    while (medir(et, "pequeno") > 160 && et.length > 4) et = et.slice(0, -1);
+    if (et !== original) et = `${et.slice(0, -1)}…`;
+    const esPriv = !nombre.includes("/");
+    lz.raw(lz.texto(x2, yy, et, "pequeno", esPriv ? "suave" : "tinta"));
+    const bx = x2 + 172;
+    const bw = colW - 172 - 30;
+    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1(bw)}" height="3" rx="1.5" fill="${t.rejilla}"/>`);
+    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1((v / maxRepo) * bw)}" height="3" rx="1.5" fill="${esPriv ? colPriv : colPub}"/>`);
+    lz.raw(lz.texto(x2 + colW, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
+  });
+
+  // --- lenguajes ---
+  const lgy = alto - 66;
+  lz.raw(`<line x1="${M}" y1="${lgy - 24.5}" x2="${ANCHO - M}" y2="${lgy - 24.5}" stroke="${t.linea}"/>`);
+  lz.raw(lz.texto(M, lgy, "lenguajes", "etiqueta", "suave"));
+  lz.raw(lz.texto(ANCHO - M, lgy, `${lng.repos} repositorios públicos`, "mono-pequeno", "suave", { anchor: "end" }));
+  const colores = lng.lista.map(([l]) => COLOR_LENGUAJE[l] ?? t.suave);
+  let lx2 = M;
+  const anchoBarra = ANCHO - 2 * M;
+  lng.lista.forEach(([, v], i) => {
+    const w = v * anchoBarra;
+    lz.raw(`<rect x="${f1(lx2)}" y="${lgy + 14}" width="${f1(Math.max(w - 3, 1.5))}" height="6" rx="2" fill="${colores[i]}"/>`);
+    lx2 += w;
+  });
+  lx2 = M;
+  lng.lista.forEach(([l, v], i) => {
+    const pct = `${(v * 100).toFixed(1).replace(".", ",")} %`;
+    const w = medir(l, "pequeno-fuerte");
+    lz.raw(`<rect x="${f1(lx2)}" y="${lgy + 36}" width="8" height="8" rx="1.5" fill="${colores[i]}"/>`);
+    lz.raw(lz.texto(lx2 + 14, lgy + 44, l, "pequeno-fuerte"));
+    lz.raw(lz.texto(lx2 + 20 + w, lgy + 44, pct, "mono-pequeno", "suave"));
+    lx2 += 20 + w + medir(pct, "mono-pequeno") + 24;
+  });
   return lz.render();
 }
 
-async function main() {
-  const p = datos();
-  const [act, lng] = await Promise.all([contribuciones(p.usuario), lenguajes(p.usuario)]);
-  const c = cifras(act.dias);
-  const out = {};
-  for (const tema of ["dark", "light"]) out[tema] = await tarjetaActividad(tema, act, c, lng);
-  guardar("actividad", out);
-  console.log(`actividad lista: ${c.total} contribuciones, ${lng.lista.length} lenguajes públicos`);
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch(error => { console.error(error.message); process.exitCode = 1; });
-}
+const p = datos();
+const act = await contribuciones(p.usuario);
+const priv = await privadas(p.usuario, act.dias[0].fecha, new Set(act.repos.map(([r]) => r)));
+for (const d of act.dias) d.priv = priv.porDia.get(d.fecha) ?? 0;
+const c = cifras(act.dias);
+const lng = await lenguajes(p.usuario);
+const out = {};
+for (const tema of ["dark", "light"]) out[tema] = await tarjetaActividad(tema, p, act, c, priv, lng);
+guardar("actividad", out);
+console.log(`actividad lista: ${c.total} contribuciones (${c.privadas} privadas), ${lng.lista.length} lenguajes`);
