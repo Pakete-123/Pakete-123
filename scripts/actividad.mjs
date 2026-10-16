@@ -169,8 +169,10 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const n = act.dias.length;
   const max = Math.max(1, ...act.dias.map((d) => d.n + d.priv));
   // Hoy queda delante, justo en el centro; los días ya pasados avanzan hacia la
-  // derecha y se alejan hacia el fondo.
-  const ang = (i) => Math.PI / 2 - ((n - 1 - i) / n) * Math.PI * 2;
+  // derecha y se alejan hacia el fondo. Entre el día más antiguo y hoy se deja
+  // un hueco vacío para que el principio y el final del año no se solapen.
+  const hueco = Math.PI * 2 * 0.04;
+  const ang = (i) => Math.PI / 2 - ((n - 1 - i) / (n - 1)) * (Math.PI * 2 - hueco);
   const pos = (a) => [cx + Math.cos(a) * R, cy + Math.sin(a) * r];
 
   lz.css.push(
@@ -267,7 +269,7 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     [`${c.activos}`, "días con actividad"],
     [`${c.larga} d`, "racha más larga"],
     [`${c.actual} d`, "racha actual"],
-    [fechaCorta(c.mejor.fecha), `mejor día · ${c.mejor.n + c.mejor.priv}`],
+    [fechaCorta(c.mejor.fecha), "mejor día"],
     [c.favorito, "día más activo"],
   ];
   const tw = (ANCHO - 2 * M - 4 * 10) / 5;
