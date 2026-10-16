@@ -22,7 +22,7 @@ const ICONOS_CONTACTO = {
 
 async function contacto(tema, clave, etiqueta, valor, lado) {
   const w = ANCHO / 2;
-  const h = 78;
+  const h = 60;
   const lz = new Lienzo(w, h, tema, `${etiqueta}: ${valor}`);
   const t = lz.t;
   // Esquinas redondeadas solo por fuera, para que las dos mitades encajen.
@@ -36,7 +36,7 @@ async function contacto(tema, clave, etiqueta, valor, lado) {
   // marca de agua; entra completo en la tarjeta.
   lz.defs.push(`<clipPath id="recorte"><path d="${d}Z"/></clipPath>`);
   lz.raw(
-    `<g clip-path="url(#recorte)"><g transform="translate(${w - 112} 11) scale(3.5) rotate(-14 8 8)" fill="none" stroke="${t.suave}" ` +
+    `<g clip-path="url(#recorte)"><g transform="translate(${w - 98} 9.5) scale(2.6) rotate(-14 8 8)" fill="none" stroke="${t.suave}" ` +
       `stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" opacity="0.14">${ICONOS_CONTACTO[clave]}</g></g>`,
   );
   lz.raw(`<path d="${d}" fill="none" stroke="${t.linea}"/>`);
