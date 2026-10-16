@@ -2,8 +2,9 @@
 // - una esfera con el total del año y, alrededor, un anillo en perspectiva con
 //   una barra por día (las de delante son las más recientes; hoy, en el centro);
 // - las contribuciones privadas: GitHub no las devuelve en su calendario, así
-//   que se cuentan los commits propios en los repositorios privados (necesita
-//   un token personal) y se suman, marcadas aparte;
+//   que se cuentan los commits (de todas las ramas), pull requests e issues
+//   propios en los repositorios privados, también en los que se colabora
+//   (necesita un token personal), y se suman marcadas aparte;
 // - un resumen, los repositorios con más commits y los lenguajes de los
 //   repositorios públicos.
 //
@@ -66,36 +67,66 @@ async function contribuciones(usuario) {
   };
 }
 
-/** Commits propios en repositorios privados, por día. Vacío si el token no llega. */
+/** Todas las páginas de un listado de la API REST. */
+async function paginas(url, max = 10) {
+  const todo = [];
+  for (let pag = 1; pag <= max; pag++) {
+    const lote = await peticion(`${url}${url.includes("?") ? "&" : "?"}per_page=100&page=${pag}`).catch(() => []);
+    todo.push(...lote);
+    if (lote.length < 100) break;
+  }
+  return todo;
+}
+
+/**
+ * Contribuciones propias en repositorios privados (propios, como colaborador o
+ * de organizaciones), por día:
+ * - commits de todas las ramas, sin repetir el mismo commit entre ramas;
+ * - pull requests e issues abiertas por el usuario.
+ * Vacío si el token no llega a los repos privados.
+ */
 async function privadas(usuario, desde, yaContados) {
   let repos;
   try {
-    repos = await peticion(`${API}/user/repos?visibility=private&affiliation=owner,collaborator,organization_member&per_page=100`);
+    repos = await paginas(`${API}/user/repos?visibility=private&affiliation=owner,collaborator,organization_member`);
+    if (!repos.length) throw new Error("sin repos");
   } catch {
     console.warn("Sin acceso a repos privados (revisa PROFILE_TOKEN): solo se muestran contribuciones públicas.");
-    return { porDia: new Map(), total: 0, repos: 0 };
+    return { porDia: new Map(), total: 0 };
   }
   const porDia = new Map();
+  const suma = (fecha) => porDia.set(fecha, (porDia.get(fecha) ?? 0) + 1);
   let total = 0;
-  let conCommits = 0;
   for (const repo of repos) {
     if (yaContados.has(repo.full_name)) continue; // GitHub ya los cuenta: no duplicar
-    let n = 0;
-    for (let pag = 1; ; pag++) {
-      const commits = await peticion(
-        `${API}/repos/${repo.full_name}/commits?author=${usuario}&since=${desde}T00:00:00Z&per_page=100&page=${pag}`,
-      ).catch(() => []);
+    const vistos = new Set();
+    const ramas = await paginas(`${API}/repos/${repo.full_name}/branches`);
+    for (const rama of ramas) {
+      const commits = await paginas(
+        `${API}/repos/${repo.full_name}/commits?sha=${encodeURIComponent(rama.name)}&author=${usuario}&since=${desde}T00:00:00Z`,
+      );
       for (const c of commits) {
-        const fecha = c.commit.author.date.slice(0, 10);
-        porDia.set(fecha, (porDia.get(fecha) ?? 0) + 1);
-        n++;
+        if (vistos.has(c.sha)) continue;
+        vistos.add(c.sha);
+        suma(c.commit.author.date.slice(0, 10));
+        total++;
       }
-      if (commits.length < 100) break;
     }
-    total += n;
-    if (n) conCommits++;
   }
-  return { porDia, total, repos: conCommits };
+  // Pull requests e issues en repos privados (la búsqueda solo ve lo que el token puede ver).
+  for (let pag = 1; pag <= 10; pag++) {
+    const r = await peticion(
+      `${API}/search/issues?q=${encodeURIComponent(`author:${usuario} is:private created:>=${desde}`)}&per_page=100&page=${pag}`,
+    ).catch(() => ({ items: [] }));
+    for (const it of r.items) {
+      const repo = it.repository_url.split("/").slice(-2).join("/");
+      if (yaContados.has(repo)) continue;
+      suma(it.created_at.slice(0, 10));
+      total++;
+    }
+    if (r.items.length < 100) break;
+  }
+  return { porDia, total };
 }
 
 async function lenguajes(usuario) {
@@ -168,11 +199,13 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const radio = 70; // de la esfera
   const n = act.dias.length;
   const max = Math.max(1, ...act.dias.map((d) => d.n + d.priv));
-  // Hoy queda delante, justo en el centro; los días ya pasados avanzan hacia la
-  // derecha y se alejan hacia el fondo. Entre el día más antiguo y hoy se deja
-  // un hueco vacío para que el principio y el final del año no se solapen.
-  const hueco = Math.PI * 2 * 0.04;
-  const ang = (i) => Math.PI / 2 - ((n - 1 - i) / (n - 1)) * (Math.PI * 2 - hueco);
+  // Hoy queda delante, justo en el centro y separado por un hueco a su derecha;
+  // tras el hueco, los días ya pasados avanzan hacia la derecha y se alejan
+  // hacia el fondo, hasta el más antiguo, que queda a la izquierda de hoy.
+  const huecoDcha = Math.PI * 2 * 0.045; // separa hoy de los días anteriores
+  const huecoIzda = Math.PI * 2 * 0.012; // evita que el día más antiguo toque a hoy
+  const ang = (i) =>
+    i === n - 1 ? Math.PI / 2 : Math.PI / 2 - huecoDcha - ((n - 2 - i) / (n - 2)) * (Math.PI * 2 - huecoDcha - huecoIzda);
   const pos = (a) => [cx + Math.cos(a) * R, cy + Math.sin(a) * r];
 
   lz.css.push(
@@ -283,7 +316,7 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   // --- repositorios con más commits, a todo el ancho ---
   const by = fy + 66 + 40;
   const anchoCol = ANCHO - 2 * M;
-  lz.raw(lz.texto(M, by, "repositorios con más commits", "etiqueta", "suave"));
+  lz.raw(lz.texto(M, by, "repositorios con más actividad", "etiqueta", "suave"));
   // El propio repositorio del perfil no cuenta: son commits de mantenimiento.
   const lista = act.repos.filter(([nombre]) => nombre !== `${p.usuario}/${p.usuario}`);
   if (priv.total) lista.push(["privados", priv.total]);
