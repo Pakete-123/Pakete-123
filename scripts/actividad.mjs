@@ -4,8 +4,8 @@
 // - las contribuciones privadas: GitHub no las devuelve en su calendario, así
 //   que se cuentan los commits propios en los repositorios privados (necesita
 //   un token personal) y se suman, marcadas aparte;
-// - un resumen, el reparto por tipo, los repositorios con más commits y los
-//   lenguajes de los repositorios públicos.
+// - un resumen, los repositorios con más commits y los lenguajes de los
+//   repositorios públicos.
 //
 // Token: en Actions, GITHUB_TOKEN recibe el secreto PROFILE_TOKEN (personal,
 // con lectura de los repos privados); sin acceso a ellos solo se ve lo público. En local:
@@ -50,7 +50,6 @@ async function peticion(url, cuerpo) {
 async function contribuciones(usuario) {
   const r = await peticion(`${API}/graphql`, {
     query: `query($u: String!) { user(login: $u) { contributionsCollection {
-      totalCommitContributions totalPullRequestContributions totalPullRequestReviewContributions totalIssueContributions
       commitContributionsByRepository(maxRepositories: 100) { repository { nameWithOwner } contributions { totalCount } }
       contributionCalendar { weeks { contributionDays { date contributionCount weekday } } } } } }`,
     variables: { u: usuario },
@@ -63,12 +62,6 @@ async function contribuciones(usuario) {
     dias: c.contributionCalendar.weeks
       .flatMap((s) => s.contributionDays.map((d) => ({ fecha: d.date, n: d.contributionCount, priv: 0, dia: d.weekday })))
       .slice(-365),
-    tipos: [
-      ["commits", c.totalCommitContributions],
-      ["pull requests", c.totalPullRequestContributions],
-      ["revisiones", c.totalPullRequestReviewContributions],
-      ["issues", c.totalIssueContributions],
-    ],
     repos: c.commitContributionsByRepository.map((x) => [x.repository.nameWithOwner, x.contributions.totalCount]),
   };
 }
@@ -156,7 +149,7 @@ const fechaCorta = (iso) => {
 };
 
 async function tarjetaActividad(tema, p, act, c, priv, lng) {
-  const alto = 760;
+  const alto = 740;
   const lz = new Lienzo(
     ANCHO, alto, tema, "Actividad en GitHub",
     `${c.total} contribuciones en los últimos 12 meses (${c.publicas} públicas y ${c.privadas} privadas), ` +
@@ -175,8 +168,9 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const radio = 70; // de la esfera
   const n = act.dias.length;
   const max = Math.max(1, ...act.dias.map((d) => d.n + d.priv));
-  // Hoy queda delante, en el centro; los días anteriores se alejan hacia atrás.
-  const ang = (i) => Math.PI / 2 + ((n - 1 - i) / n) * Math.PI * 2;
+  // Hoy queda delante, justo en el centro; los días ya pasados avanzan hacia la
+  // derecha y se alejan hacia el fondo.
+  const ang = (i) => Math.PI / 2 - ((n - 1 - i) / n) * Math.PI * 2;
   const pos = (a) => [cx + Math.cos(a) * R, cy + Math.sin(a) * r];
 
   lz.css.push(
@@ -279,52 +273,31 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const tw = (ANCHO - 2 * M - 4 * 10) / 5;
   tiles.forEach(([v, k], i) => {
     const x = M + i * (tw + 10);
-    const numerico = /^\d+( d)?$/.test(v);
     lz.raw(`<rect x="${f1(x)}" y="${fy}" width="${f1(tw)}" height="66" rx="4" fill="${t.panel}" stroke="${t.linea}"/>`);
-    lz.raw(lz.texto(x + tw / 2, fy + 34, v, numerico ? "cifra" : "titulo", "tinta", { anchor: "middle" }));
+    lz.raw(lz.texto(x + tw / 2, fy + 34, v, "cifra", "tinta", { anchor: "middle" }));
     lz.raw(lz.texto(x + tw / 2, fy + 53, k, "mono-pequeno", "suave", { anchor: "middle" }));
   });
 
-  // --- por tipo y repositorios, en dos columnas ---
+  // --- repositorios con más commits, a todo el ancho ---
   const by = fy + 66 + 40;
-  const colW = (ANCHO - 2 * M - 40) / 2;
-  const x2 = M + colW + 40;
-  lz.raw(lz.texto(M, by, "por tipo", "etiqueta", "suave"));
-  const tipos = act.tipos.map(([k, v]) => (k === "commits" ? [k, v + c.privadas] : [k, v]));
-  const totalTipos = tipos.reduce((a, [, v]) => a + v, 0) || 1;
-  let x = M;
-  tipos.forEach(([, v], i) => {
-    const w = (v / totalTipos) * colW;
-    if (w > 0) lz.raw(`<rect x="${f1(x)}" y="${by + 14}" width="${f1(Math.max(w - 2, 1))}" height="8" rx="1.5" fill="${t.rojos[i]}"/>`);
-    x += w;
-  });
-  tipos.forEach(([k, v], i) => {
-    const yy = by + 46 + i * 24;
-    lz.raw(`<rect x="${M}" y="${yy - 8}" width="8" height="8" rx="1.5" fill="${t.rojos[i]}"/>`);
-    lz.raw(lz.texto(M + 16, yy, k, "pequeno", "tinta"));
-    lz.raw(lz.texto(M + colW, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
-  });
-
-  lz.raw(lz.texto(x2, by, "repositorios con más commits", "etiqueta", "suave"));
+  const anchoCol = ANCHO - 2 * M;
+  lz.raw(lz.texto(M, by, "repositorios con más commits", "etiqueta", "suave"));
   // El propio repositorio del perfil no cuenta: son commits de mantenimiento.
   const lista = act.repos.filter(([nombre]) => nombre !== `${p.usuario}/${p.usuario}`);
-  if (priv.total) lista.push([`privados (${priv.repos})`, priv.total]);
+  if (priv.total) lista.push(["privados", priv.total]);
   lista.sort((a, b) => b[1] - a[1]);
   const top = lista.slice(0, 5);
   const maxRepo = Math.max(1, ...top.map(([, v]) => v));
   top.forEach(([nombre, v], i) => {
-    const yy = by + 22 + i * 24;
-    let et = nombre.includes("/") ? nombre.split("/")[1] : nombre;
-    const original = et;
-    while (medir(et, "pequeno") > 160 && et.length > 4) et = et.slice(0, -1);
-    if (et !== original) et = `${et.slice(0, -1)}…`;
+    const yy = by + 26 + i * 26;
     const esPriv = !nombre.includes("/");
-    lz.raw(lz.texto(x2, yy, et, "pequeno", esPriv ? "suave" : "tinta"));
-    const bx = x2 + 172;
-    const bw = colW - 172 - 30;
-    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1(bw)}" height="3" rx="1.5" fill="${t.rejilla}"/>`);
-    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1((v / maxRepo) * bw)}" height="3" rx="1.5" fill="${esPriv ? colPriv : colPub}"/>`);
-    lz.raw(lz.texto(x2 + colW, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
+    const et = esPriv ? nombre : nombre.split("/")[1];
+    lz.raw(lz.texto(M, yy, et, "pequeno", esPriv ? "suave" : "tinta"));
+    const bx = M + 290;
+    const bw = anchoCol - 290 - 40;
+    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1(bw)}" height="4" rx="2" fill="${t.rejilla}"/>`);
+    lz.raw(`<rect x="${bx}" y="${yy - 6}" width="${f1((v / maxRepo) * bw)}" height="4" rx="2" fill="${esPriv ? colPriv : colPub}"/>`);
+    lz.raw(lz.texto(M + anchoCol, yy, String(v), "mono-pequeno", "suave", { anchor: "end" }));
   });
 
   // --- lenguajes ---
