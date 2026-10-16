@@ -1,5 +1,5 @@
 // Tarjeta de actividad con datos vivos de GitHub:
-// - una esfera con el total del año y, alrededor, un anillo en perspectiva con
+// - una esfera que flota con el total del año y, alrededor, un anillo en perspectiva con
 //   una barra por día (las de delante son las más recientes; hoy, en el centro);
 // - las contribuciones privadas: GitHub no las devuelve en su calendario, así
 //   que se cuentan los commits (de todas las ramas), pull requests e issues
@@ -268,13 +268,30 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     }
     mesAnterior = mes;
   });
+  // Onda que sale del pie de la esfera y recorre el anillo, una y otra vez.
+  const onda = (attr, desde, hasta) =>
+    `<animate attributeName="${attr}" values="${desde};${hasta}" dur="4.5s" begin="1.4s" repeatCount="indefinite" ` +
+    `calcMode="spline" keyTimes="0;1" keySplines="0.2 0.6 0.3 1"/>`;
+  lz.raw(
+    `<ellipse cx="${cx}" cy="${f1(cy)}" rx="${radio}" ry="${f1(radio * 0.3)}" fill="none" stroke="${colPub}" stroke-width="1.5" opacity="0">` +
+      onda("rx", radio, R + 18) + onda("ry", f1(radio * 0.3), r + 6) + onda("opacity", 0.7, 0) + `</ellipse>`,
+  );
   for (const b of detras) lz.raw(dibujaBarra(b));
-  // la esfera, con su sombra en el suelo
-  lz.raw(`<ellipse cx="${cx}" cy="${f1(cy + 6)}" rx="${radio * 1.15}" ry="${radio * 0.32}" fill="url(#sombra)"/>`);
-  lz.raw(`<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#esfera)"/>`);
-  lz.raw(`<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#brillo)"/>`);
-  lz.raw(lz.texto(cx, cy - radio * 0.55 + 4, String(c.total), "cifra", "#ffffff", { anchor: "middle" }));
-  lz.raw(lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }));
+  // La esfera flota despacio; su sombra se encoge y se aclara cuando sube.
+  const flota = `dur="4.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"`;
+  lz.raw(
+    `<ellipse cx="${cx}" cy="${f1(cy + 6)}" rx="${radio * 1.15}" ry="${radio * 0.32}" fill="url(#sombra)">` +
+      `<animate attributeName="rx" values="${f1(radio * 1.15)};${f1(radio * 0.95)};${f1(radio * 1.15)}" ${flota}/>` +
+      `<animate attributeName="opacity" values="1;0.6;1" ${flota}/></ellipse>`,
+  );
+  lz.raw(
+    `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" ${flota}/>` +
+      `<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#esfera)"/>` +
+      `<circle cx="${cx}" cy="${f1(cy - radio * 0.55)}" r="${radio}" fill="url(#brillo)"/>` +
+      lz.texto(cx, cy - radio * 0.55 + 4, String(c.total), "cifra", "#ffffff", { anchor: "middle" }) +
+      lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
+      `</g>`,
+  );
   for (const b of delante) lz.raw(dibujaBarra(b));
   // En el hueco, el año actual junto a hoy y el anterior junto al día más antiguo.
   const [gx, gy] = pos(Math.PI / 2 - hueco / 2);
@@ -286,7 +303,12 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   lz.raw(lz.texto(gx + 7, gy + 4, anioIni, "mono-pequeno", "suave"));
   // hoy
   const [hx, hy] = pos(ang(n - 1));
-  lz.raw(`<circle cx="${f1(hx)}" cy="${f1(hy + 10)}" r="2.5" fill="${t.acento}"/>`);
+  lz.raw(
+    `<circle cx="${f1(hx)}" cy="${f1(hy + 10)}" r="2.5" fill="none" stroke="${colPub}">` +
+      `<animate attributeName="r" values="2.5;9" dur="2s" repeatCount="indefinite"/>` +
+      `<animate attributeName="opacity" values="0.9;0" dur="2s" repeatCount="indefinite"/></circle>`,
+  );
+  lz.raw(`<circle cx="${f1(hx)}" cy="${f1(hy + 10)}" r="2.5" fill="${colPub}"/>`);
   lz.raw(lz.texto(hx, hy + 26, "hoy", "mono-pequeno", "suave", { anchor: "middle" }));
   // leyenda de la escena
   const ly = cy + r + 58;
