@@ -1,18 +1,17 @@
 // Tarjeta de actividad con datos vivos de GitHub:
-// - el último año como un reloj: cada día es un trazo radial cuya longitud sale
-//   de las contribuciones de ese día; el año se "dibuja" una vez al cargar;
+// - globo terrestre con un punto por fecha; la altura indica actividad;
 // - un resumen con cifras, el reparto por tipo y los repositorios con más commits;
-// - relieve radial y lenguajes de repositorios públicos y privados.
+// - proyectos y lenguajes de repositorios públicos y privados.
 //
 // Necesita un token en GITHUB_TOKEN (en el workflow lo pone Actions; en local
 // vale `GITHUB_TOKEN=$(gh auth token) node scripts/actividad.mjs`).
 
-import { ANCHO, Lienzo, datos, f1, guardar, medir, tarjeta, esc } from "./comun.mjs";
+import { globo } from "./globo.mjs";
+import { ANCHO, Lienzo, datos, f1, guardar, medir } from "./comun.mjs";
 
 const API = "https://api.github.com";
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const M = 28;
 // Colores oficiales de cada lenguaje en GitHub (linguist).
 const COLOR_LENGUAJE = {
   TypeScript: "#3178c6",
@@ -94,7 +93,7 @@ async function lenguajes(usuario) {
     const resto = lista.slice(4).reduce((a, [, x]) => a + x, 0);
     lista = [...lista.slice(0, 4), ["Otros", resto]];
   }
-  return { lista, repos: contados, privados: repos.filter(r => r.private && !r.fork && r.name !== usuario).map(r => r.name) };
+  return { lista, repos: contados, privados: repos.filter(r => r.private && !r.fork && r.name !== usuario).map(r => ({ nombre:r.name, lenguaje:r.language || "Código", actualizado:r.pushed_at, url:r.html_url })) };
 }
 
 function cifras(dias) {
@@ -126,11 +125,12 @@ const fechaCorta = (iso, anio = true) => {
   return anio ? `${d} ${MESES[m - 1]} ${a}` : `${d} ${MESES[m - 1]}`;
 };
 
-// Proyección ortográfica: el calendario conserva su forma circular, con
-// altura por contribuciones y caras laterales reales en cada sector diario.
+// Globo terrestre y panel de repositorios privados con datos autenticados.
 async function tarjetaActividad(tema, p, act, c, lng) {
-  const alto = 644;
-  const lz = new Lienzo(ANCHO, alto, tema, 'Actividad en GitHub · relieve anual',
+  const filasPrivadas = Math.ceil(lng.privados.length / 3);
+  const bloquePrivado = lng.privados.length ? 76 + filasPrivadas * 100 : 0;
+  const alto = 634 + bloquePrivado;
+  const lz = new Lienzo(ANCHO, alto, tema, 'Actividad en GitHub · mundo de código',
     `${c.total} contribuciones en 365 días. ${c.activos} días activos. ` +
     `${lng.repos} repositorios analizados, ${lng.privados.length} privados. ` +
     `Lenguajes por volumen de código: ${lng.lista.map(([l,v]) => `${l} ${(v*100).toFixed(1)} %`).join(', ')}.`);
@@ -143,66 +143,23 @@ async function tarjetaActividad(tema, p, act, c, lng) {
     `<linearGradient id="relieve" x2=".5" y2="1"><stop stop-color="${brillo}"/><stop offset="1" stop-color="${t.acento}"/></linearGradient>`,
     `<radialGradient id="luz"><stop stop-color="${t.acento}" stop-opacity=".16"/><stop offset="1" stop-color="${t.acento}" stop-opacity="0"/></radialGradient>`);
   lz.css.push('@keyframes entrada{from{transform:translateY(8px)}to{transform:translateY(0)}}.relieve{animation:entrada 1.2s ease-out both}@media(prefers-reduced-motion:reduce){.relieve{animation:none}}');
-  lz.raw(`<rect x="3" y="8" width="854" height="635" rx="16" fill="${t.tenue}" opacity=".38"/><rect x=".5" y=".5" width="859" height="632" rx="16" fill="url(#panel3d)" stroke="${t.linea}"/>`);
+  lz.raw(`<rect x="3" y="8" width="854" height="${alto-9}" rx="16" fill="${t.tenue}" opacity=".38"/><rect x=".5" y=".5" width="859" height="${alto-12}" rx="16" fill="url(#panel3d)" stroke="${t.linea}"/>`);
   lz.raw(lz.texto(28,35,'POST','seccion','acento'));
   lz.raw(lz.texto(79,35,'/activity/sync','seccion'));
   lz.raw(`<circle cx="603" cy="30" r="3" fill="${t.ok}"/>`);
   lz.raw(lz.texto(832,35,`sincronizado · ${fechaCorta(c.hasta)}`,'meta','suave',{anchor:'end'}));
   lz.raw(`<path d="M28 55H832" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(32,87,'01 / RELIEVE ANUAL','meta','suave'));
-  lz.raw(lz.texto(32,112,'Cada pieza, un día. Cada altura, actividad.','pequeno','suave'));
+  lz.raw(lz.texto(32,87,'01 / MI MUNDO EN CÓDIGO','meta','suave'));
+  lz.raw(lz.texto(32,112,'Un año de actividad, conectado punto a punto.','pequeno','suave'));
 
-  const cx=220, cy=305, sy=.65;
-  const punto=(r,a,h=0)=>[cx+Math.cos(a)*r,cy+Math.sin(a)*r*sy-h];
-  const puntos=(ps)=>ps.map(([x,y])=>`${f1(x)},${f1(y)}`).join(' ');
-  const pol=(ps,fill,stroke=fill)=>`<polygon points="${puntos(ps)}" fill="${fill}" stroke="${stroke}" stroke-width=".45" stroke-linejoin="round"/>`;
-  lz.raw(`<ellipse cx="${cx+4}" cy="${cy+35}" rx="179" ry="110" fill="${t.fondo}" opacity=".65"/><ellipse cx="${cx}" cy="${cy-5}" rx="210" ry="195" fill="url(#luz)"/>`);
-  lz.raw(`<ellipse cx="${cx}" cy="${cy+15}" rx="164" ry="${164*sy}" fill="url(#metal)" stroke="${t.linea}"/><ellipse cx="${cx}" cy="${cy}" rx="164" ry="${164*sy}" fill="${t.panel}" stroke="${t.tenue}"/>`);
-  for(const r of [85,115,142,164]) lz.raw(`<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r*sy}" fill="none" stroke="${t.linea}" stroke-width=".7"/>`);
-  const n=act.dias.length, max=Math.max(1,...act.dias.map(d=>d.n));
-  const ang=i=>-Math.PI/2+i/n*Math.PI*2;
-  // Dibuja del fondo al frente para respetar la oclusión de las caras.
-  const secteurs=act.dias.map((d,i)=>({d,i,a:ang(i)})).sort((a,b)=>Math.sin(a.a)-Math.sin(b.a));
-  lz.raw('<g class="relieve">');
-  for(const {d,i,a} of secteurs) {
-    const h=d.n ? 5+Math.sqrt(d.n/max)*55 : 1.5;
-    const ri=96, ro=d.n ? 139+Math.sqrt(d.n/max)*17 : 137;
-    const a1=a+.0017,a2=ang(i+1)-.0017;
-    const bas=[punto(ri,a1),punto(ro,a1),punto(ro,a2),punto(ri,a2)];
-    const haut=[punto(ri,a1,h),punto(ro,a1,h),punto(ro,a2,h),punto(ri,a2,h)];
-    const color=d.n ? 'url(#relieve)' : t.linea;
-    lz.raw(`<g><title>${esc(d.fecha)} · ${d.n} contribuciones</title>`);
-    lz.raw(pol([bas[1],bas[2],haut[2],haut[1]],d.n?lateral:t.rejilla));
-    lz.raw(pol([bas[0],bas[1],haut[1],haut[0]],d.n?t.acento:t.rejilla));
-    lz.raw(pol([bas[2],bas[3],haut[3],haut[2]],d.n?lateral:t.rejilla));
-    lz.raw(pol([bas[3],bas[0],haut[0],haut[3]],d.n?t.acento:t.rejilla));
-    lz.raw(pol(haut,color,d.n?brillo:t.linea));
-    lz.raw('</g>');
-  }
-  lz.raw('</g>');
-  // Las etiquetas quedan fuera de la geometría, sin deformar el texto.
-  for(let m=0;m<12;m++) {
-    const index=act.dias.findIndex(d=>Number(d.fecha.slice(5,7))===m+1 && Number(d.fecha.slice(8))>=14);
-    if(index<0) continue;
-    const a=ang(index), [x,y]=punto(190,a);
-    lz.raw(lz.texto(x,y+4,MESES[m],'mono-pequeno','suave',{anchor:'middle'}));
-  }
-  lz.raw(`<ellipse cx="${cx}" cy="${cy+4}" rx="77" ry="51" fill="${t.fondo}" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(cx,cy-5,String(c.total),'cifra','tinta',{anchor:'middle'}));
-  lz.raw(lz.texto(cx,cy+14,'contribuciones','mono-pequeno','suave',{anchor:'middle'}));
-  lz.raw(lz.texto(cx,cy+30,'últimos 12 meses','mono-pequeno','suave',{anchor:'middle'}));
-  lz.raw(lz.texto(32,460,`${fechaCorta(c.desde)} — ${fechaCorta(c.hasta)}`,'mono-pequeno','suave'));
-  lz.raw(`<rect x="32" y="475" width="7" height="7" rx="1" fill="${t.linea}"/>`);
-  lz.raw(lz.texto(45,482,'sin actividad','mono-pequeno','suave'));
-  lz.raw(`<rect x="165" y="475" width="7" height="7" rx="1" fill="${t.acento}"/>`);
-  lz.raw(lz.texto(178,482,'contribuciones','mono-pequeno','suave'));
+  globo(lz, act.dias, c.total);
 
   const rx=446,rw=386;
   lz.raw(lz.texto(rx,87,'02 / EN CIFRAS','meta','suave'));
   let y=121;
   for(const [label,value] of [
     ['Días con actividad',`${c.activos} de ${act.dias.length}`],
-    ['Racha más larga',`${c.larga} días`],['Racha actual',`${c.actual} días`],
+    ['Racha más larga',`${c.larga} días`],['Racha actual',`${c.actual} ${c.actual === 1 ? 'día' : 'días'}`],
     ['Mejor día',`${fechaCorta(c.mejor.fecha,false)} · ${c.mejor.n}`],
   ]) {
     lz.raw(lz.texto(rx,y,label,'pequeno','suave'));
@@ -236,27 +193,39 @@ async function tarjetaActividad(tema, p, act, c, lng) {
     if(w>0) lz.raw(`<rect x="647" y="${yy-5}" width="${f1(w)}" height="5" rx="2" fill="${lateral}"/><rect x="647" y="${yy-8}" width="${f1(w)}" height="5" rx="2" fill="url(#relieve)"/>`);
     lz.raw(lz.texto(832,yy,String(r.n),'mono-pequeno','suave',{anchor:'end'}));
   });
-  lz.raw(`<path d="M28 505H832" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(28,532,'lenguajes','etiqueta','suave'));
-  lz.raw(lz.texto(832,532,`${lng.repos} repos · ${lng.privados.length} privados incluidos`,'mono-pequeno','suave',{anchor:'end'}));
+  if (lng.privados.length) {
+    lz.raw('<path d="M28 515H832" stroke="'+t.linea+'"/>');
+    lz.raw(lz.texto(28,543,'03 / DETRÁS DEL CÓDIGO','meta','suave'));
+    lz.raw(lz.texto(832,543,lng.privados.length+' repositorios privados','meta','suave',{anchor:'end'}));
+    lng.privados.sort((a,b)=>a.nombre.localeCompare(b.nombre)).forEach((repo,i)=>{
+      const x=28+(i%3)*272,y=560+Math.floor(i/3)*100;
+      lz.raw('<rect x="'+(x+2)+'" y="'+(y+5)+'" width="260" height="85" rx="10" fill="'+t.tenue+'" opacity=".2"/><rect x="'+x+'" y="'+y+'" width="260" height="84" rx="10" fill="'+t.panel+'" stroke="'+t.linea+'"/>');
+      lz.raw(candado(x+16,y+13,t.suave));
+      lz.raw(lz.texto(x+32,y+23,'PRIVADO','mono-pequeno','suave'));
+      let nombre=repo.nombre;
+      while(medir(nombre,'titulo')>220) nombre=nombre.slice(0,-2)+'…';
+      lz.raw(lz.texto(x+16,y+48,nombre,'titulo'));
+      const color=COLOR_LENGUAJE[repo.lenguaje]??t.suave;
+      lz.raw('<circle cx="'+(x+20)+'" cy="'+(y+67)+'" r="3" fill="'+color+'"/>');
+      lz.raw(lz.texto(x+30,y+71,repo.lenguaje,'mono-pequeno','suave'));
+      if(repo.actualizado) lz.raw(lz.texto(x+244,y+71,fechaCorta(repo.actualizado.slice(0,10),false),'mono-pequeno','suave',{anchor:'end'}));
+    });
+  }
+  lz.raw(`<path d="M28 ${505+bloquePrivado}H832" stroke="${t.linea}"/>`);
+  lz.raw(lz.texto(28,532+bloquePrivado,'lenguajes','etiqueta','suave'));
+  lz.raw(lz.texto(832,532+bloquePrivado,`${lng.repos} repos · ${lng.privados.length} privados incluidos`,'mono-pequeno','suave',{anchor:'end'}));
   let lx=28;
   lng.lista.forEach(([l,v])=>{
     const w=v*804,color=COLOR_LENGUAJE[l]??t.suave;
-    lz.raw(`<rect x="${f1(lx)}" y="547" width="${f1(Math.max(.5,w-2))}" height="8" rx="2" fill="${color}" opacity=".35"/><rect x="${f1(lx)}" y="544" width="${f1(Math.max(.5,w-2))}" height="7" rx="2" fill="${color}"/>`);
+    lz.raw(`<rect x="${f1(lx)}" y="${547+bloquePrivado}" width="${f1(Math.max(.5,w-2))}" height="8" rx="2" fill="${color}" opacity=".35"/><rect x="${f1(lx)}" y="${544+bloquePrivado}" width="${f1(Math.max(.5,w-2))}" height="7" rx="2" fill="${color}"/>`);
     lx+=w;
   });
   lx=28;
   for(const [l,v] of lng.lista) {
     const label=`${l} ${(v*100).toFixed(1).replace('.',',')} %`;
-    lz.raw(`<rect x="${f1(lx)}" y="569" width="7" height="7" rx="1" fill="${COLOR_LENGUAJE[l]??t.suave}"/>`);
-    lz.raw(lz.texto(lx+13,576,label,'mono-pequeno'));
+    lz.raw(`<rect x="${f1(lx)}" y="${569+bloquePrivado}" width="7" height="7" rx="1" fill="${COLOR_LENGUAJE[l]??t.suave}"/>`);
+    lz.raw(lz.texto(lx+13,576+bloquePrivado,label,'mono-pequeno'));
     lx+=medir(label,'mono-pequeno')+34;
-  }
-  if(lng.privados.length) {
-    let label='También en privado · '+lng.privados.sort().join(' / ');
-    while(medir(label,'mono-pequeno')>770) label=label.slice(0,-2)+'…';
-    lz.raw(candado(28,600,t.suave));
-    lz.raw(lz.texto(44,610,label,'mono-pequeno','suave'));
   }
   return lz.render();
 }

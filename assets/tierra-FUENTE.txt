@@ -1,0 +1,8 @@
+Geometría terrestre: Natural Earth, escala 1:110m.
+Distribución: world-atlas 2.0.2, land-110m.json.
+https://github.com/topojson/world-atlas
+https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json
+Licencia de la distribución: tierra-LICENSE.txt.
+
+El generador usa una proyección ortográfica con d3-geo.
+Los puntos de contribuciones se distribuyen simbólicamente: no son ubicaciones.

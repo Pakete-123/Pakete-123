@@ -13,6 +13,8 @@ on:
       - "datos/**"
       - "scripts/**"
       - "assets/fuentes/**"
+      - "assets/tierra*"
+      - "package*.json"
   workflow_dispatch:
 
 permissions:
