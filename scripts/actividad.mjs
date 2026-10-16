@@ -199,13 +199,11 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const radio = 70; // de la esfera
   const n = act.dias.length;
   const max = Math.max(1, ...act.dias.map((d) => d.n + d.priv));
-  // Hoy queda delante, justo en el centro y separado por un hueco a su derecha;
-  // tras el hueco, los días ya pasados avanzan hacia la derecha y se alejan
-  // hacia el fondo, hasta el más antiguo, que queda a la izquierda de hoy.
-  const huecoDcha = Math.PI * 2 * 0.045; // separa hoy de los días anteriores
-  const huecoIzda = Math.PI * 2 * 0.012; // evita que el día más antiguo toque a hoy
-  const ang = (i) =>
-    i === n - 1 ? Math.PI / 2 : Math.PI / 2 - huecoDcha - ((n - 2 - i) / (n - 2)) * (Math.PI * 2 - huecoDcha - huecoIzda);
+  // Hoy queda delante, justo en el centro; los días ya pasados avanzan hacia la
+  // derecha y se alejan hacia el fondo, hasta el más antiguo, que queda a la
+  // izquierda de hoy. Entre ambos queda un hueco donde cambia el año.
+  const hueco = Math.PI * 2 * 0.06;
+  const ang = (i) => Math.PI / 2 - ((n - 1 - i) / (n - 1)) * (Math.PI * 2 - hueco);
   const pos = (a) => [cx + Math.cos(a) * R, cy + Math.sin(a) * r];
 
   lz.css.push(
@@ -278,6 +276,14 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   lz.raw(lz.texto(cx, cy - radio * 0.55 + 4, String(c.total), "cifra", "#ffffff", { anchor: "middle" }));
   lz.raw(lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }));
   for (const b of delante) lz.raw(dibujaBarra(b));
+  // En el hueco, el cambio de año: el anterior a la izquierda y el actual a la derecha.
+  const [gx, gy] = pos(Math.PI / 2 + hueco / 2);
+  const anioIni = act.dias[0].fecha.slice(0, 4);
+  const anioFin = c.hasta.slice(0, 4);
+  lz.raw(`<rect x="${f1(gx - 44)}" y="${f1(gy - 9)}" width="88" height="18" fill="${t.fondo}"/>`);
+  lz.raw(`<line x1="${f1(gx)}" y1="${f1(gy - 8)}" x2="${f1(gx)}" y2="${f1(gy + 8)}" stroke="${t.tenue}"/>`);
+  lz.raw(lz.texto(gx - 7, gy + 4, anioIni, "mono-pequeno", "suave", { anchor: "end" }));
+  lz.raw(lz.texto(gx + 7, gy + 4, anioFin, "mono-pequeno", "tinta"));
   // hoy
   const [hx, hy] = pos(ang(n - 1));
   lz.raw(`<circle cx="${f1(hx)}" cy="${f1(hy + 10)}" r="2.5" fill="${t.acento}"/>`);

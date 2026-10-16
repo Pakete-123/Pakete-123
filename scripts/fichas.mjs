@@ -32,23 +32,23 @@ async function contacto(tema, clave, etiqueta, valor, lado) {
       ? `M${w} 0.5H${r + 0.5}Q0.5 0.5 0.5 ${r + 0.5}V${h - r - 0.5}Q0.5 ${h - 0.5} ${r + 0.5} ${h - 0.5}H${w}`
       : `M0 0.5H${w - r - 0.5}Q${w - 0.5} 0.5 ${w - 0.5} ${r + 0.5}V${h - r - 0.5}Q${w - 0.5} ${h - 0.5} ${w - r - 0.5} ${h - 0.5}H0`;
   lz.raw(`<path d="${d}Z" fill="${t.panel}"/>`);
-  // El icono, en grande y con trazo grueso, asomando por la esquina inferior
-  // derecha y recortado por la tarjeta, como marca de agua.
+  // El icono, en grande, inclinado y con trazo grueso en la parte derecha, como
+  // marca de agua; entra completo en la tarjeta.
   lz.defs.push(`<clipPath id="recorte"><path d="${d}Z"/></clipPath>`);
   lz.raw(
-    `<g clip-path="url(#recorte)"><g transform="translate(${w - 124} 16) scale(5.2) rotate(-14 8 8)" fill="none" stroke="${t.suave}" ` +
+    `<g clip-path="url(#recorte)"><g transform="translate(${w - 112} 11) scale(3.5) rotate(-14 8 8)" fill="none" stroke="${t.suave}" ` +
       `stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" opacity="0.14">${ICONOS_CONTACTO[clave]}</g></g>`,
   );
   lz.raw(`<path d="${d}" fill="none" stroke="${t.linea}"/>`);
   if (lado === "der") lz.raw(`<line x1="0.5" y1="12" x2="0.5" y2="${h - 12}" stroke="${t.linea}"/>`);
   // Icono pequeño dentro de una casilla redondeada.
-  lz.raw(`<rect x="${M - 6}" y="${h / 2 - 16}" width="32" height="32" rx="8" fill="${t.fondo}" stroke="${t.linea}"/>`);
+  lz.raw(`<rect x="${M - 4}" y="${h / 2 - 13}" width="26" height="26" rx="7" fill="${t.fondo}" stroke="${t.linea}"/>`);
   lz.raw(
-    `<g transform="translate(${M + 2} ${h / 2 - 8})" fill="none" stroke="${t.acento}" stroke-width="1.3" stroke-linecap="round" ` +
+    `<g transform="translate(${M + 2.6} ${h / 2 - 6.4}) scale(0.8)" fill="none" stroke="${t.acento}" stroke-width="1.5" stroke-linecap="round" ` +
       `stroke-linejoin="round">${ICONOS_CONTACTO[clave]}</g>`,
   );
-  lz.raw(lz.texto(M + 40, h / 2 + 5, etiqueta, "meta", "suave"));
-  lz.raw(lz.texto(M + 40 + medir(etiqueta, "meta") + 12, h / 2 + 5, valor, "dato", "tinta"));
+  lz.raw(lz.texto(M + 34, h / 2 + 5, etiqueta, "meta", "suave"));
+  lz.raw(lz.texto(M + 34 + medir(etiqueta, "meta") + 12, h / 2 + 5, valor, "dato", "tinta"));
   lz.raw(`<path d="M${w - M - 8} ${h / 2 - 4}l4 4-4 4" fill="none" stroke="${t.suave}" stroke-width="1.5" stroke-linecap="round"/>`);
   return lz.render();
 }
