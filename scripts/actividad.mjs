@@ -229,8 +229,6 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   lz.defs.push(
     `<filter id="halo" x="-2" y="-2" width="5" height="5"><feGaussianBlur stdDeviation="3"/></filter>`,
     `<clipPath id="bola"><circle cx="${cx}" cy="${f1(yBola)}" r="${radio}"/></clipPath>`,
-    `<clipPath id="atras"><rect x="0" y="0" width="${ANCHO}" height="${f1(cy)}"/></clipPath>`,
-    `<clipPath id="delante"><rect x="0" y="${f1(cy)}" width="${ANCHO}" height="${alto}"/></clipPath>`,
   );
 
   // Públicas y privadas, con contraste suficiente en los dos temas.
@@ -322,28 +320,80 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     }
     mesAnterior = mes;
   });
-  // Cometa con estela que recorre el anillo desde hoy hacia atrás en el tiempo.
-  // Se dibuja dos veces, recortado: la mitad del fondo queda detrás de la
-  // esfera y la de delante, encima de todo.
-  const vuelta = `M${cx} ${f1(cy + r)}A${R} ${r} 0 1 1 ${cx} ${f1(cy - r)}A${R} ${r} 0 1 1 ${cx} ${f1(cy + r)}`;
-  const colCometa = tema === "dark" ? "#ff9aa4" : "#c2414f";
-  const cometa = (recorte) => {
-    let g = `<g clip-path="url(#${recorte})">`;
-    g +=
-      `<circle r="7" fill="${colCometa}" opacity="0" filter="url(#halo)"><set attributeName="opacity" to="0.6" begin="1.8s"/>` +
-      `<animateMotion path="${vuelta}" dur="10s" begin="1.8s" repeatCount="indefinite"/></circle>`;
-    for (let k = 7; k >= 0; k--) {
-      const ini = f1(1.8 + k * 0.05);
-      const rad = k === 0 ? 3.4 : f1(3 - k * 0.3);
-      const op = k === 0 ? 1 : f1(0.75 - k * 0.09);
-      g +=
-        `<circle r="${rad}" fill="${colCometa}" opacity="0"><set attributeName="opacity" to="${op}" begin="${ini}s"/>` +
-        `<animateMotion path="${vuelta}" dur="10s" begin="${ini}s" repeatCount="indefinite"/></circle>`;
-    }
-    return g + "</g>";
+  // --- profundidad ---
+  // El suelo se divide en franjas horizontales, de atrás (arriba) hacia delante
+  // (abajo). Cada franja se dibuja en orden: sus barras y, encima, el trozo de
+  // onda y de satélite que cae en ella. Así lo que está más cerca tapa a lo que
+  // está más lejos, también cuando el satélite o la onda pasan entre barras.
+  // Onda y satélite se definen una vez y se reutilizan recortados (<use>).
+  const yIni = cy - r - 14;
+  const yFin = cy + r + 14;
+  const nFranjas = 18;
+  const bordes = Array.from({ length: nFranjas + 1 }, (_, k) => yIni + ((yFin - yIni) * k) / nFranjas);
+  bordes[0] = 0;
+  bordes[nFranjas] = alto;
+  bordes.slice(0, -1).forEach((y0f, k) => {
+    lz.defs.push(`<clipPath id="franja${k}"><rect x="0" y="${f1(y0f)}" width="${ANCHO}" height="${f1(bordes[k + 1] - y0f)}"/></clipPath>`);
+  });
+
+  // Onda: sale del pie de la esfera y se expande por el suelo, en bucle.
+  const onda = (attr, desde, hasta) =>
+    `<animate attributeName="${attr}" values="${desde};${hasta}" dur="4.5s" begin="1.4s" repeatCount="indefinite" ` +
+    `calcMode="spline" keyTimes="0;1" keySplines="0.2 0.6 0.3 1"/>`;
+  lz.defs.push(
+    `<ellipse id="onda" cx="${cx}" cy="${f1(cy)}" rx="${radio}" ry="${f1(radio * 0.3)}" fill="none" stroke="${colPub}" stroke-width="1.6" opacity="0">` +
+      onda("rx", radio, R + 18) + onda("ry", f1(radio * 0.3), r + 6) + onda("opacity", 0.8, 0) + `</ellipse>`,
+  );
+
+  // Satélite: recorre el anillo desde hoy hacia atrás en el tiempo. Se mueve con
+  // velocidad angular constante, así que en perspectiva va más rápido delante, y
+  // crece y brilla más cuanto más cerca está.
+  const muestras = 72;
+  const angs = Array.from({ length: muestras + 1 }, (_, k) => Math.PI / 2 + (k / muestras) * Math.PI * 2);
+  const cerca = angs.map((a) => (Math.sin(a) + 1) / 2); // 0 fondo .. 1 delante
+  const pts = angs.map((a) => pos(a));
+  const keyTimes = angs.map((_, k) => f1((k / muestras) * 1000) / 1000).join(";");
+  const valoresX = pts.map(([x]) => f1(x)).join(";");
+  const valoresY = pts.map(([, y]) => f1(y)).join(";");
+  const escala = (base) => cerca.map((p) => f1(base * (0.5 + p * 0.6))).join(";");
+  const brillo = (base) => cerca.map((p) => f1(base * (0.45 + p * 0.55))).join(";");
+  const colSat = tema === "dark" ? "#ff8f9a" : "#b3283a";
+  const nucleo = tema === "dark" ? "#fff1f2" : "#ffffff";
+  const orbita = 10;
+  const mueve = (ini) =>
+    `<animate attributeName="cx" values="${valoresX}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>` +
+    `<animate attributeName="cy" values="${valoresY}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>`;
+  const tamano = (base, ini) =>
+    `<animate attributeName="r" values="${escala(base)}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>`;
+  const luz = (base, ini) =>
+    `<animate attributeName="opacity" values="${brillo(base)}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>`;
+  let sat = `<g id="satelite">`;
+  const salida = 1.8;
+  // estela: de la cola a la cabeza
+  const largo = 14;
+  for (let k = largo; k >= 1; k--) {
+    const ini = salida + k * 0.035;
+    const base = 3.2 * (1 - k / (largo + 2));
+    const op = 0.85 * Math.pow(1 - k / (largo + 1), 1.6);
+    sat += `<circle cx="-50" cy="-50" r="${f1(base)}" fill="${colSat}" opacity="0">${mueve(ini)}${tamano(base, ini)}${luz(op, ini)}</circle>`;
+  }
+  // halo, cuerpo y núcleo
+  sat += `<circle cx="-50" cy="-50" r="9" fill="${colSat}" opacity="0" filter="url(#halo)">${mueve(salida)}${tamano(9, salida)}${luz(0.7, salida)}</circle>`;
+  sat += `<circle cx="-50" cy="-50" r="4" fill="${colSat}" opacity="0">${mueve(salida)}${tamano(4, salida)}${luz(1, salida)}</circle>`;
+  sat += `<circle cx="-50" cy="-50" r="1.8" fill="${nucleo}" opacity="0">${mueve(salida)}${tamano(1.8, salida)}${luz(1, salida)}</circle>`;
+  lz.defs.push(sat + "</g>");
+
+  // Barras repartidas por franjas según la y de su base.
+  const franjaDe = (y) => Math.max(0, Math.min(nFranjas - 1, bordes.findIndex((b, k) => k > 0 && y < b) - 1));
+  const porFranja = Array.from({ length: nFranjas }, () => []);
+  for (const b of [...detras, ...delante]) porFranja[franjaDe(b.y)].push(b);
+  const franja = (k) => {
+    for (const b of porFranja[k].sort((a, b2) => a.y - b2.y)) lz.raw(dibujaBarra(b));
+    lz.raw(`<use href="#onda" clip-path="url(#franja${k})"/><use href="#satelite" clip-path="url(#franja${k})"/>`);
   };
-  for (const b of detras) lz.raw(dibujaBarra(b));
-  lz.raw(cometa("atras"));
+  // Franjas del fondo (por encima del centro del anillo), detrás de la esfera.
+  const kCentro = franjaDe(cy);
+  for (let k = 0; k < kCentro; k++) franja(k);
   // La esfera flota despacio; su sombra se encoge y se aclara cuando sube.
   const flota = `dur="4.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"`;
   lz.raw(
@@ -360,8 +410,8 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
       `</g>`,
   );
-  for (const b of delante) lz.raw(dibujaBarra(b));
-  lz.raw(cometa("delante"));
+  // Franjas de delante, por encima de la esfera.
+  for (let k = kCentro; k < nFranjas; k++) franja(k);
   // En el hueco, el año actual junto a hoy y el anterior junto al día más antiguo.
   const [gx, gy] = pos(Math.PI / 2 - hueco / 2);
   const anioIni = act.dias[0].fecha.slice(0, 4);
