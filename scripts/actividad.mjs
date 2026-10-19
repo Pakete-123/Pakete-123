@@ -271,23 +271,30 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     return g;
   };
 
-  // Barras: [x, ybase, alto, profundidad 0 (fondo) .. 1 (delante), privada?]
+  // Barras: [x, ybase, alto, profundidad 0 (fondo) .. 1 (delante)]
   const barras = act.dias.map((d, i) => {
     const a = ang(i);
     const [x, y] = pos(a);
     const total = d.n + d.priv;
     const h = total ? 6 + Math.sqrt(total / max) * (hMax - 6) : 0;
-    return { x, y, h, prof: (Math.sin(a) + 1) / 2, priv: d.priv > 0 && d.priv >= d.n, i, d };
+    return { x, y, h, prof: (Math.sin(a) + 1) / 2, i, d };
   });
+  // Cada barra se reparte entre públicas (abajo) y privadas (arriba) según lo
+  // que hubo ese día; si solo hubo de un tipo, sale entera de ese color.
   const dibujaBarra = (b) => {
     if (!b.h) {
       return `<circle cx="${f1(b.x)}" cy="${f1(b.y)}" r="${f1(0.8 + b.prof * 0.6)}" fill="${t.tenue}" opacity="${f1(0.35 + b.prof * 0.65)}"/>`;
     }
     const w = 1.4 + b.prof * 1.6;
-    const color = b.priv ? colPriv : colPub;
+    const x = f1(b.x - w / 2);
+    const total = b.d.n + b.d.priv;
+    const hPub = (b.d.n / total) * b.h;
+    let segmentos = "";
+    if (b.d.priv) segmentos += `<rect x="${x}" y="${f1(b.y - b.h)}" width="${f1(w)}" height="${f1(b.h)}" rx="${f1(w / 2)}" fill="${colPriv}"/>`;
+    if (b.d.n) segmentos += `<rect x="${x}" y="${f1(b.y - hPub)}" width="${f1(w)}" height="${f1(hPub)}" rx="${f1(w / 2)}" fill="${colPub}"/>`;
     return (
-      `<rect class="b" style="animation-delay:${f1(0.15 + ((n - 1 - b.i) / n) * 1.4)}s" x="${f1(b.x - w / 2)}" y="${f1(b.y - b.h)}" ` +
-      `width="${f1(w)}" height="${f1(b.h)}" rx="${f1(w / 2)}" fill="${color}" opacity="${f1(0.4 + b.prof * 0.6)}"/>`
+      `<g class="b" style="animation-delay:${f1(0.15 + ((n - 1 - b.i) / n) * 1.4)}s" opacity="${f1(0.4 + b.prof * 0.6)}">` +
+      `${segmentos}</g>`
     );
   };
   const detras = barras.filter((b) => b.prof < 0.5).sort((a, b) => a.y - b.y);
