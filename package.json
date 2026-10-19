@@ -6,7 +6,8 @@
     "fichas": "node scripts/fichas.mjs",
     "banner": "node scripts/banner.mjs",
     "actividad": "node scripts/actividad.mjs",
-    "todo": "node scripts/fichas.mjs && node scripts/banner.mjs && node scripts/actividad.mjs"
+    "todo": "node scripts/fichas.mjs && node scripts/banner.mjs && node scripts/actividad.mjs",
+    "version": "node scripts/version.mjs"
   },
   "repository": {
     "type": "git",

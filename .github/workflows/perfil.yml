@@ -48,9 +48,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PROFILE_TOKEN }}
         run: npm run actividad
 
+      - name: Versiones de las imágenes en el README
+        run: npm run version
+
       - name: Guardar si ha cambiado algo
         run: |
-          git add assets
+          git add assets README.md
           if git diff --cached --quiet; then
             echo "Nada que actualizar."
             exit 0
