@@ -183,6 +183,11 @@ const MARCA = {
   vite: "#646CFF",
   composer: "#C08A5B",
   apachemaven: "#C71A36",
+  angular: "#DD0031",
+  tailwindcss: "#06B6D4",
+  nodedotjs: "#5FA04E",
+  laravel: "#FF2D20",
+  sequelize: "#52B0E7",
 };
 
 async function stack(tema, p) {
@@ -238,7 +243,7 @@ async function stack(tema, p) {
     const pts = (...ps) => ps.map(([x, y]) => `${f1(x)},${f1(y)}`).join(" ");
     const partes = [];
     // zona invisible que cubre la leyenda, para que el hover funcione también ahí
-    partes.push(`<rect x="${M - 8}" y="${cy - 34}" width="${L[0] - M}" height="58" fill="transparent"/>`);
+    partes.push(`<rect x="${M - 8}" y="${cy - 34}" width="${L[0] - M}" height="72" fill="transparent"/>`);
     partes.push(`<polygon points="${pts(L, B, [B[0], B[1] + grosor], [L[0], L[1] + grosor])}" fill="${t.rejilla}" stroke="${t.linea}"/>`);
     partes.push(`<polygon points="${pts(B, R, [R[0], R[1] + grosor], [B[0], B[1] + grosor])}" fill="${t.panel}" stroke="${t.linea}"/>`);
     partes.push(
@@ -252,12 +257,13 @@ async function stack(tema, p) {
     partes.push(`<path transform="${mat}" d="${rejilla}" fill="none" stroke="${t.rejilla}" stroke-width="${f1(1 / b)}"/>`);
     // logos de pie, repartidos en horizontal sobre el centro de la losa
     const n = c.items.length;
-    const tam = 24;
-    const sep = 46;
+    // Con muchas tecnologías los logos se juntan un poco para caber en la losa.
+    const tam = n > 5 ? 21 : 24;
+    const sep = n > 5 ? 39 : 46;
     iconos[i].forEach((d, k) => {
       const x = cx + (k - (n - 1) / 2) * sep;
       const yb = cy + 4; // donde "apoya" el logo
-      partes.push(`<ellipse cx="${f1(x)}" cy="${yb}" rx="13" ry="4.5" fill="${t.linea}"/>`);
+      partes.push(`<ellipse cx="${f1(x)}" cy="${yb}" rx="${f1(tam * 0.54)}" ry="4.5" fill="${t.linea}"/>`);
       partes.push(
         `<svg x="${f1(x - tam / 2)}" y="${yb - tam - 6}" width="${tam}" height="${tam}" viewBox="0 0 24 24">` +
           `<path class="ic ic-${i}-${k}" d="${esc(d)}" fill="${t.tinta}" fill-opacity="0.85">` +
@@ -270,14 +276,22 @@ async function stack(tema, p) {
         turno(i, "stroke", t.tenue, t.acento) + `</line>`);
     partes.push(`<circle cx="${L[0] - 4}" cy="${ly + 0.5}" r="2" fill="${t.suave}">${turno(i, "fill", t.suave, t.acento)}</circle>`);
     partes.push(lz.texto(M, ly - 16, c.capa, "seccion", "tinta"));
+    // Leyenda en una o dos líneas, según quepa antes de la guía.
     let x = M;
+    let fila = 0;
     c.items.forEach(([nombre], k) => {
+      const ancho = 20 + medir(nombre, "dato");
+      if (x > M && x + ancho > M + 405) {
+        x = M;
+        fila++;
+      }
+      const yf = ly + fila * 21;
       partes.push(
-        `<svg x="${f1(x)}" y="${ly - 2}" width="14" height="14" viewBox="0 0 24 24">` +
+        `<svg x="${f1(x)}" y="${yf - 2}" width="14" height="14" viewBox="0 0 24 24">` +
           `<path class="ic ic-${i}-${k}" d="${esc(iconos[i][k])}" fill="${t.suave}">` +
           turno(i, "fill", t.suave, MARCA[c.items[k][1]] ?? t.tinta) + `</path></svg>`,
       );
-      partes.push(lz.texto(x + 20, ly + 10, nombre, "dato", "tinta"));
+      partes.push(lz.texto(x + 20, yf + 10, nombre, "dato", "tinta"));
       x += 20 + medir(nombre, "dato") + 18;
     });
     lz.raw(`<g class="capa">${partes.join("")}</g>`);

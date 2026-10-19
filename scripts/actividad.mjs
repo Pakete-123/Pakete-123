@@ -1,5 +1,5 @@
 // Tarjeta de actividad con datos vivos de GitHub:
-// - una esfera que flota y gira con el total del año y, alrededor, un anillo en perspectiva con
+// - un agujero negro que flota con el total del año y, alrededor, un anillo en perspectiva con
 //   una barra por día (las de delante son las más recientes; hoy, en el centro);
 // - las contribuciones privadas: GitHub no las devuelve en su calendario, así
 //   que se cuentan los commits (de todas las ramas), pull requests e issues
@@ -190,13 +190,12 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   const t = lz.t;
   const y0 = tarjeta(lz, "/activity/sync", `200 OK · sincronizado el ${c.hasta.split("-").reverse().join("/")}`, "POST");
 
-  // --- la escena: esfera y anillo de días en perspectiva ---
+  // --- la escena: agujero negro y anillo de días en perspectiva ---
   const cx = ANCHO / 2;
   const cy = y0 + 190;
   const R = 330; // semieje horizontal del anillo
   const r = 64; // semieje vertical (inclinación)
   const hMax = 92;
-  const radio = 70; // de la esfera
   const n = act.dias.length;
   const max = Math.max(1, ...act.dias.map((d) => d.n + d.priv));
   // Hoy queda delante, justo en el centro, y los días anteriores van pegados a
@@ -215,43 +214,56 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       ".ll{transform-box:fill-box;transform-origin:0 50%;animation:llena 1.1s cubic-bezier(.2,.8,.2,1) both}" +
       "@media (prefers-reduced-motion:reduce){.b,.en,.ll{animation:none}}",
   );
+  // --- agujero negro ---
+  // Horizonte negro con anillo de fotones, disco de acreción incandescente que
+  // gira (mitad trasera detrás del horizonte y delantera por delante) y el arco
+  // de luz que la gravedad curva por encima. Todo flota sobre el anillo.
+  const yAg = cy - 34; // centro del agujero
+  const rh = 50; // radio del horizonte
+  const discoRx = 132;
+  const discoRy = 24;
+  const inclina = -7; // grados
   lz.defs.push(
-    `<radialGradient id="esfera" cx="0.5" cy="0.5" r="0.5" fx="0.34" fy="0.3">` +
-      `<stop offset="0" stop-color="#e0606c"/><stop offset="0.35" stop-color="${"#a3162a"}"/>` +
-      `<stop offset="0.8" stop-color="#800517"/><stop offset="1" stop-color="#3d0209"/></radialGradient>`,
-    `<radialGradient id="brillo" cx="0.36" cy="0.28" r="0.3"><stop offset="0" stop-color="#fff" stop-opacity="0.45"/>` +
-      `<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`,
-    `<radialGradient id="sombra" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#000" stop-opacity="${tema === "dark" ? 0.55 : 0.18}"/>` +
-      `<stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`,
-  );
-
-  const yBola = cy - radio * 0.55;
-  lz.defs.push(
-    `<filter id="halo" x="-2" y="-2" width="5" height="5"><feGaussianBlur stdDeviation="3"/></filter>`,
-    `<clipPath id="bola"><circle cx="${cx}" cy="${f1(yBola)}" r="${radio}"/></clipPath>`,
+    `<radialGradient id="resplandor" cx="0.5" cy="0.5" r="0.5">` +
+      `<stop offset="0" stop-color="#ffb35c" stop-opacity="${tema === "dark" ? 0.55 : 0.4}"/>` +
+      `<stop offset="0.35" stop-color="#e2452f" stop-opacity="${tema === "dark" ? 0.32 : 0.22}"/>` +
+      `<stop offset="0.7" stop-color="#800517" stop-opacity="${tema === "dark" ? 0.16 : 0.1}"/>` +
+      `<stop offset="1" stop-color="#800517" stop-opacity="0"/></radialGradient>`,
+    `<linearGradient id="disco" x1="0" x2="1">` +
+      `<stop offset="0" stop-color="#800517" stop-opacity="0.15"/><stop offset="0.18" stop-color="#c62a2a"/>` +
+      `<stop offset="0.4" stop-color="#ff9a3d"/><stop offset="0.5" stop-color="#fff0c2"/><stop offset="0.6" stop-color="#ffb04a"/>` +
+      `<stop offset="0.82" stop-color="#c62a2a"/><stop offset="1" stop-color="#800517" stop-opacity="0.15"/></linearGradient>`,
+    `<linearGradient id="lente" x1="0" y1="0" x2="0" y2="1">` +
+      `<stop offset="0" stop-color="#fff3d1"/><stop offset="0.5" stop-color="#ffa14a"/><stop offset="1" stop-color="#c62a2a"/></linearGradient>`,
+    `<radialGradient id="suelo" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ff6a3a" stop-opacity="${tema === "dark" ? 0.35 : 0.22}"/>` +
+      `<stop offset="1" stop-color="#800517" stop-opacity="0"/></radialGradient>`,
+    `<filter id="halo" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>`,
+    `<filter id="difumina" x="-0.5" y="-1" width="2" height="3"><feGaussianBlur stdDeviation="2.2"/></filter>`,
+    `<clipPath id="mitadAtras"><rect x="0" y="0" width="${ANCHO}" height="${f1(yAg)}"/></clipPath>`,
+    `<clipPath id="mitadDelante"><rect x="0" y="${f1(yAg)}" width="${ANCHO}" height="${alto}"/></clipPath>`,
   );
 
   // Públicas y privadas, con contraste suficiente en los dos temas.
   const colPub = tema === "dark" ? t.rojos[0] : t.acento;
   const colPriv = tema === "dark" ? t.rojos[1] : t.rojos[2];
-  // Paralelos fijos y meridianos que giran: la esfera parece rotar sobre su eje.
-  const rejillaBola = () => {
-    let g = `<g clip-path="url(#bola)" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.16">`;
-    for (const lat of [-50, -25, 0, 25, 50]) {
-      const rad = (lat * Math.PI) / 180;
-      const rx = radio * Math.cos(rad);
-      g += `<ellipse cx="${cx}" cy="${f1(yBola + radio * Math.sin(rad))}" rx="${f1(rx)}" ry="${f1(rx * 0.18)}"/>`;
-    }
-    const pasos = 24;
-    for (let m = 0; m < 4; m++) {
-      const fase = (m * Math.PI) / 4;
-      const valores = Array.from({ length: pasos + 1 }, (_, k) => f1(radio * Math.abs(Math.cos(fase + (k / pasos) * Math.PI))));
-      g +=
-        `<ellipse cx="${cx}" cy="${f1(yBola)}" rx="${valores[0]}" ry="${radio}">` +
-        `<animate attributeName="rx" values="${valores.join(";")}" dur="9s" repeatCount="indefinite"/></ellipse>`;
-    }
-    return g + "</g>";
+
+  // El disco: banda gruesa con degradado y, encima, rachas que giran.
+  const disco = (mitad) => {
+    const giro = (dash, dur, op, ancho) =>
+      `<ellipse cx="${cx}" cy="${f1(yAg)}" rx="${discoRx}" ry="${discoRy}" fill="none" stroke="#fff4d6" stroke-width="${ancho}" ` +
+      `stroke-dasharray="${dash}" opacity="${op}" stroke-linecap="round">` +
+      `<animate attributeName="stroke-dashoffset" from="0" to="-${f1(2 * Math.PI * discoRx)}" dur="${dur}s" repeatCount="indefinite"/></ellipse>`;
+    return (
+      `<g clip-path="url(#${mitad})"><g transform="rotate(${inclina} ${cx} ${f1(yAg)})">` +
+      `<ellipse cx="${cx}" cy="${f1(yAg)}" rx="${discoRx + 6}" ry="${discoRy + 3}" fill="none" stroke="url(#disco)" stroke-width="16" opacity="0.55" filter="url(#difumina)"/>` +
+      `<ellipse cx="${cx}" cy="${f1(yAg)}" rx="${discoRx}" ry="${discoRy}" fill="none" stroke="url(#disco)" stroke-width="10"/>` +
+      `<ellipse cx="${cx}" cy="${f1(yAg)}" rx="${discoRx - 16}" ry="${discoRy - 4}" fill="none" stroke="url(#disco)" stroke-width="5" opacity="0.8"/>` +
+      giro("40 26 14 34", 7, 0.5, 1.6) +
+      giro("8 30 22 44", 5, 0.35, 1.1) +
+      `</g></g>`
+    );
   };
+
   // El total cuenta desde 0 al cargar (fotogramas que se van relevando).
   const cuenta = (total, x, y) => {
     const marcos = 16;
@@ -295,8 +307,6 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       `${segmentos}</g>`
     );
   };
-  const detras = barras.filter((b) => b.prof < 0.5).sort((a, b) => a.y - b.y);
-  const delante = barras.filter((b) => b.prof >= 0.5).sort((a, b) => a.y - b.y);
 
   // suelo: elipses guía
   lz.raw(`<ellipse cx="${cx}" cy="${f1(cy)}" rx="${R + 18}" ry="${r + 6}" fill="none" stroke="${t.rejilla}"/>`);
@@ -320,12 +330,33 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     }
     mesAnterior = mes;
   });
+
+  // La flotación del agujero: abajo en t = 0, arriba a mitad de ciclo.
+  const ciclo = 4.5;
+  const flota = `dur="${ciclo}s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"`;
+
+  // Resplandor del agujero sobre el suelo, más intenso cuando está abajo.
+  lz.raw(
+    `<ellipse cx="${cx}" cy="${f1(cy)}" rx="${discoRx * 1.5}" ry="${f1(discoRx * 0.38)}" fill="url(#suelo)">` +
+      `<animate attributeName="opacity" values="1;0.55;1" ${flota}/></ellipse>`,
+  );
+  // Onda: nace en el rebote, justo cuando el agujero empieza a subir (inicio de
+  // cada ciclo), y se expande por el suelo por debajo de todas las barras.
+  const onda = (attr, desde, hasta) =>
+    `<animate attributeName="${attr}" values="${desde};${hasta}" dur="${ciclo}s" begin="0s" repeatCount="indefinite" ` +
+    `calcMode="spline" keyTimes="0;1" keySplines="0.15 0.7 0.3 1"/>`;
+  lz.raw(
+    `<ellipse cx="${cx}" cy="${f1(cy)}" rx="${discoRx * 0.6}" ry="${f1(discoRx * 0.12)}" fill="none" stroke="${colPub}" stroke-width="1.8" opacity="0">` +
+      onda("rx", f1(discoRx * 0.6), R + 18) + onda("ry", f1(discoRx * 0.12), r + 6) + onda("opacity", 0.9, 0) +
+      onda("stroke-width", 2.4, 0.6) + `</ellipse>`,
+  );
+
   // --- profundidad ---
   // El suelo se divide en franjas horizontales, de atrás (arriba) hacia delante
   // (abajo). Cada franja se dibuja en orden: sus barras y, encima, el trozo de
-  // onda y de satélite que cae en ella. Así lo que está más cerca tapa a lo que
-  // está más lejos, también cuando el satélite o la onda pasan entre barras.
-  // Onda y satélite se definen una vez y se reutilizan recortados (<use>).
+  // planetas y de materia que cae en ella. Así lo que está más cerca tapa a lo
+  // que está más lejos. Planetas y materia se definen una vez y se reutilizan
+  // recortados (<use>).
   const yIni = cy - r - 14;
   const yFin = cy + r + 14;
   const nFranjas = 18;
@@ -336,81 +367,103 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     lz.defs.push(`<clipPath id="franja${k}"><rect x="0" y="${f1(y0f)}" width="${ANCHO}" height="${f1(bordes[k + 1] - y0f)}"/></clipPath>`);
   });
 
-  // Onda: sale del pie de la esfera y se expande por el suelo, en bucle.
-  const onda = (attr, desde, hasta) =>
-    `<animate attributeName="${attr}" values="${desde};${hasta}" dur="4.5s" begin="1.4s" repeatCount="indefinite" ` +
-    `calcMode="spline" keyTimes="0;1" keySplines="0.2 0.6 0.3 1"/>`;
-  lz.defs.push(
-    `<ellipse id="onda" cx="${cx}" cy="${f1(cy)}" rx="${radio}" ry="${f1(radio * 0.3)}" fill="none" stroke="${colPub}" stroke-width="1.6" opacity="0">` +
-      onda("rx", radio, R + 18) + onda("ry", f1(radio * 0.3), r + 6) + onda("opacity", 0.8, 0) + `</ellipse>`,
-  );
-
-  // Satélite: recorre el anillo desde hoy hacia atrás en el tiempo. Se mueve con
-  // velocidad angular constante, así que en perspectiva va más rápido delante, y
-  // crece y brilla más cuanto más cerca está.
+  // Planetas: tres órbitas distintas alrededor del agujero, desde hoy hacia
+  // atrás en el tiempo; crecen y brillan al pasar por delante.
   const muestras = 72;
-  const angs = Array.from({ length: muestras + 1 }, (_, k) => Math.PI / 2 + (k / muestras) * Math.PI * 2);
-  const cerca = angs.map((a) => (Math.sin(a) + 1) / 2); // 0 fondo .. 1 delante
-  const pts = angs.map((a) => pos(a));
-  const keyTimes = angs.map((_, k) => f1((k / muestras) * 1000) / 1000).join(";");
-  const valoresX = pts.map(([x]) => f1(x)).join(";");
-  const valoresY = pts.map(([, y]) => f1(y)).join(";");
-  const escala = (base) => cerca.map((p) => f1(base * (0.5 + p * 0.6))).join(";");
-  const brillo = (base) => cerca.map((p) => f1(base * (0.45 + p * 0.55))).join(";");
-  const colSat = tema === "dark" ? "#ff8f9a" : "#b3283a";
-  const nucleo = tema === "dark" ? "#fff1f2" : "#ffffff";
-  const orbita = 10;
-  const mueve = (ini) =>
-    `<animate attributeName="cx" values="${valoresX}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>` +
-    `<animate attributeName="cy" values="${valoresY}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>`;
-  const tamano = (base, ini) =>
-    `<animate attributeName="r" values="${escala(base)}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>`;
-  const luz = (base, ini) =>
-    `<animate attributeName="opacity" values="${brillo(base)}" keyTimes="${keyTimes}" dur="${orbita}s" begin="${f1(ini)}s" repeatCount="indefinite"/>`;
-  let sat = `<g id="satelite">`;
-  const salida = 1.8;
-  // estela: de la cola a la cabeza
-  const largo = 14;
-  for (let k = largo; k >= 1; k--) {
-    const ini = salida + k * 0.035;
-    const base = 3.2 * (1 - k / (largo + 2));
-    const op = 0.85 * Math.pow(1 - k / (largo + 1), 1.6);
-    sat += `<circle cx="-50" cy="-50" r="${f1(base)}" fill="${colSat}" opacity="0">${mueve(ini)}${tamano(base, ini)}${luz(op, ini)}</circle>`;
+  const orbita = (escalaOrb, dur, desfase) => {
+    const angs = Array.from({ length: muestras + 1 }, (_, k) => Math.PI / 2 + (k / muestras) * Math.PI * 2);
+    const cerca = angs.map((a) => (Math.sin(a) + 1) / 2);
+    const pts = angs.map((a) => [cx + Math.cos(a) * R * escalaOrb, cy + Math.sin(a) * r * escalaOrb]);
+    const kt = angs.map((_, k) => f1((k / muestras) * 1000) / 1000).join(";");
+    const anim = (attr, valores) =>
+      `<animate attributeName="${attr}" values="${valores.join(";")}" keyTimes="${kt}" dur="${dur}s" begin="${desfase}s" repeatCount="indefinite"/>`;
+    const esc = (v) => cerca.map((p) => f1(v * (0.55 + p * 0.6)));
+    return {
+      x: anim("cx", pts.map(([x]) => f1(x))),
+      y: anim("cy", pts.map(([, y]) => f1(y))),
+      r: (v) => anim("r", esc(v)),
+      rx: (v) => anim("rx", esc(v)),
+      ry: (v) => anim("ry", esc(v)),
+      luz: (v) => anim("opacity", cerca.map((p) => f1(v * (0.5 + p * 0.5)))),
+    };
+  };
+  lz.defs.push(
+    `<radialGradient id="planeta1" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffb7a8"/><stop offset="0.5" stop-color="#d4433b"/><stop offset="1" stop-color="#5c0a10"/></radialGradient>`,
+    `<radialGradient id="planeta2" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffe6b8"/><stop offset="0.5" stop-color="#e09a52"/><stop offset="1" stop-color="#6b3410"/></radialGradient>`,
+    `<radialGradient id="planeta3" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f3b4bb"/><stop offset="1" stop-color="#8a3a44"/></radialGradient>`,
+  );
+  const o1 = orbita(1.0, 16, 0);
+  const o2 = orbita(0.84, 26, -11);
+  const o3 = orbita(1.12, 11, -5);
+  let planetas = `<g id="planetas">`;
+  // 1: rojo, con un leve halo
+  planetas += `<circle cx="-99" cy="-99" r="9" fill="#ff6a5c" filter="url(#halo)">${o1.x}${o1.y}${o1.r(9)}${o1.luz(0.45)}</circle>`;
+  planetas += `<circle cx="-99" cy="-99" r="6" fill="url(#planeta1)">${o1.x}${o1.y}${o1.r(6)}</circle>`;
+  // 2: con anillos (el anillo pasa por detrás y su mitad delantera, por delante)
+  planetas += `<ellipse cx="-99" cy="-99" rx="13" ry="3.6" fill="none" stroke="#f3c48a" stroke-width="1.4" opacity="0.85">${o2.x}${o2.y}${o2.rx(13)}${o2.ry(3.6)}</ellipse>`;
+  planetas += `<circle cx="-99" cy="-99" r="6.5" fill="url(#planeta2)">${o2.x}${o2.y}${o2.r(6.5)}</circle>`;
+  planetas += `<ellipse cx="-99" cy="-99" rx="13" ry="3.6" fill="none" stroke="#f3c48a" stroke-width="1.4" opacity="0.85" pathLength="100" stroke-dasharray="50 50">${o2.x}${o2.y}${o2.rx(13)}${o2.ry(3.6)}</ellipse>`;
+  // 3: pequeño y pálido
+  planetas += `<circle cx="-99" cy="-99" r="3.6" fill="url(#planeta3)">${o3.x}${o3.y}${o3.r(3.6)}${o3.luz(1)}</circle>`;
+  planetas += `</g>`;
+  lz.defs.push(planetas);
+
+  // Materia que cae: partículas que salen del anillo de días y entran en espiral
+  // en el disco de acreción del agujero.
+  const flujo = [];
+  const nParticulas = 12;
+  for (let p = 0; p < nParticulas; p++) {
+    const a0 = (p / nParticulas) * Math.PI * 2;
+    const pasos = 40;
+    const puntos = Array.from({ length: pasos + 1 }, (_, k) => {
+      const tt = k / pasos;
+      const rad = R * 0.86 + (discoRx - R * 0.86) * Math.pow(tt, 0.75);
+      const a = a0 - tt * Math.PI * 1.6; // gira en el mismo sentido que el disco
+      const yc = cy + (yAg - cy) * tt;
+      const ry = rad * (r / R) * (1 - tt) + discoRy * (rad / discoRx) * tt;
+      return `${f1(cx + Math.cos(a) * rad)} ${f1(yc + Math.sin(a) * ry)}`;
+    });
+    const dur = f1(3.6 + (p % 4) * 0.5);
+    const ini = f1(-(p * 0.43));
+    const tam = f1(1.3 + (p % 3) * 0.45);
+    flujo.push(
+      `<circle r="${tam}" fill="${p % 2 ? "#ffb35c" : "#ff7a5c"}" opacity="0">` +
+        `<animateMotion path="M${puntos.join("L")}" dur="${dur}s" begin="${ini}s" repeatCount="indefinite"/>` +
+        `<animate attributeName="opacity" values="0;0.95;0.95;0" keyTimes="0;0.15;0.8;1" dur="${dur}s" begin="${ini}s" repeatCount="indefinite"/></circle>`,
+    );
   }
-  // halo, cuerpo y núcleo
-  sat += `<circle cx="-50" cy="-50" r="9" fill="${colSat}" opacity="0" filter="url(#halo)">${mueve(salida)}${tamano(9, salida)}${luz(0.7, salida)}</circle>`;
-  sat += `<circle cx="-50" cy="-50" r="4" fill="${colSat}" opacity="0">${mueve(salida)}${tamano(4, salida)}${luz(1, salida)}</circle>`;
-  sat += `<circle cx="-50" cy="-50" r="1.8" fill="${nucleo}" opacity="0">${mueve(salida)}${tamano(1.8, salida)}${luz(1, salida)}</circle>`;
-  lz.defs.push(sat + "</g>");
+  lz.defs.push(`<g id="materia">${flujo.join("")}</g>`);
 
   // Barras repartidas por franjas según la y de su base.
   const franjaDe = (y) => Math.max(0, Math.min(nFranjas - 1, bordes.findIndex((b, k) => k > 0 && y < b) - 1));
   const porFranja = Array.from({ length: nFranjas }, () => []);
-  for (const b of [...detras, ...delante]) porFranja[franjaDe(b.y)].push(b);
+  for (const b of barras) porFranja[franjaDe(b.y)].push(b);
   const franja = (k) => {
     for (const b of porFranja[k].sort((a, b2) => a.y - b2.y)) lz.raw(dibujaBarra(b));
-    lz.raw(`<use href="#onda" clip-path="url(#franja${k})"/><use href="#satelite" clip-path="url(#franja${k})"/>`);
+    lz.raw(`<use href="#materia" clip-path="url(#franja${k})"/><use href="#planetas" clip-path="url(#franja${k})"/>`);
   };
-  // Franjas del fondo (por encima del centro del anillo), detrás de la esfera.
-  const kCentro = franjaDe(cy);
+  // Franjas del fondo, detrás del agujero.
+  const kCentro = franjaDe(yAg + discoRy);
   for (let k = 0; k < kCentro; k++) franja(k);
-  // La esfera flota despacio; su sombra se encoge y se aclara cuando sube.
-  const flota = `dur="4.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"`;
-  lz.raw(
-    `<ellipse cx="${cx}" cy="${f1(cy + 6)}" rx="${radio * 1.15}" ry="${radio * 0.32}" fill="url(#sombra)">` +
-      `<animate attributeName="rx" values="${f1(radio * 1.15)};${f1(radio * 0.95)};${f1(radio * 1.15)}" ${flota}/>` +
-      `<animate attributeName="opacity" values="1;0.6;1" ${flota}/></ellipse>`,
-  );
+
+  // El agujero negro, flotando.
   lz.raw(
     `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" ${flota}/>` +
-      `<circle cx="${cx}" cy="${f1(yBola)}" r="${radio}" fill="url(#esfera)"/>` +
-      rejillaBola() +
-      `<circle cx="${cx}" cy="${f1(yBola)}" r="${radio}" fill="url(#brillo)"/>` +
-      cuenta(c.total, cx, yBola + 4) +
-      lz.texto(cx, cy - radio * 0.55 + 22, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
+      `<circle cx="${cx}" cy="${f1(yAg)}" r="${rh * 2.6}" fill="url(#resplandor)"><animate attributeName="opacity" values="1;0.75;1" ${flota}/></circle>` +
+      disco("mitadAtras") +
+      // arco de luz curvado alrededor del horizonte (lente gravitatoria)
+      `<circle cx="${cx}" cy="${f1(yAg)}" r="${rh + 9}" fill="none" stroke="url(#lente)" stroke-width="9" opacity="0.9" filter="url(#difumina)"/>` +
+      `<circle cx="${cx}" cy="${f1(yAg)}" r="${rh + 6}" fill="none" stroke="url(#lente)" stroke-width="4"/>` +
+      // horizonte y anillo de fotones
+      `<circle cx="${cx}" cy="${f1(yAg)}" r="${rh}" fill="#050203"/>` +
+      `<circle cx="${cx}" cy="${f1(yAg)}" r="${rh + 1.2}" fill="none" stroke="#fff1d6" stroke-width="1.2" opacity="0.9">` +
+      `<animate attributeName="opacity" values="0.9;0.55;0.9" dur="3s" repeatCount="indefinite"/></circle>` +
+      disco("mitadDelante") +
+      cuenta(c.total, cx, yAg - 1) +
+      lz.texto(cx, yAg + 13, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
       `</g>`,
   );
-  // Franjas de delante, por encima de la esfera.
+  // Franjas de delante, por encima del agujero.
   for (let k = kCentro; k < nFranjas; k++) franja(k);
   // En el hueco, el año actual junto a hoy y el anterior junto al día más antiguo.
   const [gx, gy] = pos(Math.PI / 2 - hueco / 2);

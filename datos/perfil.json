@@ -52,6 +52,9 @@
       "capa": "frontend",
       "items": [
         ["React", "react"],
+        ["Angular", "angular"],
+        ["Next.js", "nextdotjs"],
+        ["Tailwind CSS", "tailwindcss"],
         ["HTML5", "html5"],
         ["CSS3", "css3"],
         ["Sass", "sass"]
@@ -63,14 +66,18 @@
         ["Java", "openjdk"],
         ["JavaScript", "javascript"],
         ["TypeScript", "typescript"],
-        ["PHP", "php"]
+        ["PHP", "php"],
+        ["Node.js", "nodedotjs"],
+        ["Laravel", "laravel"],
+        ["Express", "express"]
       ]
     },
     {
       "capa": "databases",
       "items": [
         ["MySQL", "mysql"],
-        ["PostgreSQL", "postgresql"]
+        ["PostgreSQL", "postgresql"],
+        ["Sequelize", "sequelize"]
       ]
     },
     {
