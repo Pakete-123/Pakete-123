@@ -187,16 +187,16 @@ const MARCA = {
   tailwindcss: "#06B6D4",
   nodedotjs: "#5FA04E",
   laravel: "#FF2D20",
-  sequelize: "#52B0E7",
+  rust: "#DEA584",
 };
 
 async function stack(tema, p) {
   const capas = p.stack;
   const cx = 650; // centro de las losas
   const a = 150; // semiancho
-  const b = 46; // semialto
+  const b = 40; // semialto
   const grosor = 12;
-  const paso = 82; // separación vertical entre losas
+  const paso = 96; // separación vertical: deja aire para los logos de cada capa
   const yTop = 60 + 52 + b;
   const alto = yTop + (capas.length - 1) * paso + b + grosor + 30;
   const total = capas.reduce((s, c) => s + c.items.length, 0);
@@ -258,8 +258,8 @@ async function stack(tema, p) {
     // logos de pie, repartidos en horizontal sobre el centro de la losa
     const n = c.items.length;
     // Con muchas tecnologías los logos se juntan un poco para caber en la losa.
-    const tam = n > 5 ? 21 : 24;
-    const sep = n > 5 ? 39 : 46;
+    const tam = n > 7 ? 20 : n > 5 ? 21 : 24;
+    const sep = Math.min(46, 250 / Math.max(n - 1, 1));
     iconos[i].forEach((d, k) => {
       const x = cx + (k - (n - 1) / 2) * sep;
       const yb = cy + 4; // donde "apoya" el logo

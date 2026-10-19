@@ -69,15 +69,15 @@
         ["PHP", "php"],
         ["Node.js", "nodedotjs"],
         ["Laravel", "laravel"],
-        ["Express", "express"]
+        ["Express", "express"],
+        ["Rust", "rust"]
       ]
     },
     {
       "capa": "databases",
       "items": [
         ["MySQL", "mysql"],
-        ["PostgreSQL", "postgresql"],
-        ["Sequelize", "sequelize"]
+        ["PostgreSQL", "postgresql"]
       ]
     },
     {
@@ -86,8 +86,7 @@
         ["Git", "git"],
         ["GitHub", "github"],
         ["Vite", "vite"],
-        ["Composer", "composer"],
-        ["Maven", "apachemaven"]
+        ["Composer", "composer"]
       ]
     }
   ],

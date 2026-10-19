@@ -1,6 +1,7 @@
 // Tarjeta de actividad con datos vivos de GitHub:
 // - un agujero negro que flota con el total del año y, alrededor, un anillo en perspectiva con
 //   una barra por día (las de delante son las más recientes; hoy, en el centro);
+// - los ocho planetas del sistema solar orbitando el agujero;
 // - las contribuciones privadas: GitHub no las devuelve en su calendario, así
 //   que se cuentan los commits (de todas las ramas), pull requests e issues
 //   propios en los repositorios privados, también en los que se colabora
@@ -367,8 +368,9 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     lz.defs.push(`<clipPath id="franja${k}"><rect x="0" y="${f1(y0f)}" width="${ANCHO}" height="${f1(bordes[k + 1] - y0f)}"/></clipPath>`);
   });
 
-  // Planetas: tres órbitas distintas alrededor del agujero, desde hoy hacia
-  // atrás en el tiempo; crecen y brillan al pasar por delante.
+  // Sistema solar: los ocho planetas orbitan el agujero negro, cada uno en su
+  // órbita y más rápido cuanto más cerca está. Se mueven desde hoy hacia atrás
+  // en el tiempo y crecen y brillan al pasar por delante.
   const muestras = 72;
   const orbita = (escalaOrb, dur, desfase) => {
     const angs = Array.from({ length: muestras + 1 }, (_, k) => Math.PI / 2 + (k / muestras) * Math.PI * 2);
@@ -379,60 +381,89 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       `<animate attributeName="${attr}" values="${valores.join(";")}" keyTimes="${kt}" dur="${dur}s" begin="${desfase}s" repeatCount="indefinite"/>`;
     const esc = (v) => cerca.map((p) => f1(v * (0.55 + p * 0.6)));
     return {
-      x: anim("cx", pts.map(([x]) => f1(x))),
-      y: anim("cy", pts.map(([, y]) => f1(y))),
+      pos: anim("cx", pts.map(([x]) => f1(x))) + anim("cy", pts.map(([, y]) => f1(y))),
       r: (v) => anim("r", esc(v)),
       rx: (v) => anim("rx", esc(v)),
       ry: (v) => anim("ry", esc(v)),
-      luz: (v) => anim("opacity", cerca.map((p) => f1(v * (0.5 + p * 0.5)))),
+      luz: (v) => anim("opacity", cerca.map((p) => f1(v * (0.55 + p * 0.45)))),
     };
   };
+  // Superficies: degradados con la luz que viene del agujero (arriba a la
+  // izquierda del planeta) y una sombra común para el lado oscuro.
+  const superficie = (id, stops, lineal = false) =>
+    lineal
+      ? `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join("")}</linearGradient>`
+      : `<radialGradient id="${id}" cx="0.4" cy="0.35" r="0.7">${stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join("")}</radialGradient>`;
   lz.defs.push(
-    `<radialGradient id="planeta1" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffb7a8"/><stop offset="0.5" stop-color="#d4433b"/><stop offset="1" stop-color="#5c0a10"/></radialGradient>`,
-    `<radialGradient id="planeta2" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffe6b8"/><stop offset="0.5" stop-color="#e09a52"/><stop offset="1" stop-color="#6b3410"/></radialGradient>`,
-    `<radialGradient id="planeta3" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f3b4bb"/><stop offset="1" stop-color="#8a3a44"/></radialGradient>`,
+    superficie("p-mercurio", [[0, "#d9d4cf"], [0.6, "#8f8a85"], [1, "#4a4744"]]),
+    superficie("p-venus", [[0, "#fff4d6"], [0.6, "#e6c27a"], [1, "#8a6a2c"]]),
+    superficie("p-tierra", [[0, "#9fd8ff"], [0.45, "#2f7fd1"], [0.7, "#2f9e5a"], [1, "#123a6b"]]),
+    superficie("p-marte", [[0, "#ffb08a"], [0.55, "#c4502c"], [1, "#5e1d0c"]]),
+    superficie("p-jupiter", [[0, "#f1dcc0"], [0.18, "#c9955f"], [0.3, "#f3e3cc"], [0.45, "#b9784a"], [0.58, "#ead2b0"], [0.72, "#a8653b"], [0.86, "#e7cfa9"], [1, "#9a5f37"]], true),
+    superficie("p-saturno", [[0, "#fbefd0"], [0.35, "#e8cf96"], [0.55, "#d8b878"], [0.75, "#efdcaa"], [1, "#b8955a"]], true),
+    superficie("p-urano", [[0, "#e6ffff"], [0.55, "#7fdbe6"], [1, "#2d7c8a"]]),
+    superficie("p-neptuno", [[0, "#a9c4ff"], [0.55, "#3557d6"], [1, "#14246b"]]),
+    `<radialGradient id="p-sombra" cx="0.38" cy="0.32" r="0.75"><stop offset="0.45" stop-color="#000" stop-opacity="0"/>` +
+      `<stop offset="1" stop-color="#000" stop-opacity="0.6"/></radialGradient>`,
   );
-  const o1 = orbita(1.0, 16, 0);
-  const o2 = orbita(0.84, 26, -11);
-  const o3 = orbita(1.12, 11, -5);
+  // [nombre, escala de órbita, periodo (s), desfase (s), radio, superficie, anillo]
+  const SISTEMA = [
+    ["mercurio", 0.46, 9, -2, 3.4, "p-mercurio"],
+    ["venus", 0.55, 13, -7, 5.2, "p-venus"],
+    ["tierra", 0.64, 17, -3, 5.5, "p-tierra"],
+    ["marte", 0.73, 22, -15, 4.3, "p-marte"],
+    ["jupiter", 0.84, 30, -9, 11, "p-jupiter"],
+    ["saturno", 0.94, 38, -27, 9, "p-saturno", "saturno"],
+    ["urano", 1.08, 48, -14, 6.8, "p-urano", "urano"],
+    ["neptuno", 1.18, 60, -41, 6.5, "p-neptuno"],
+  ];
+  // Órbitas muy tenues sobre el suelo, para leer el conjunto como un sistema.
+  for (const [, esc] of SISTEMA) {
+    lz.raw(`<ellipse cx="${cx}" cy="${f1(cy)}" rx="${f1(R * esc)}" ry="${f1(r * esc)}" fill="none" stroke="${t.tenue}" stroke-width="0.6" stroke-dasharray="1 5" opacity="0.6"/>`);
+  }
   let planetas = `<g id="planetas">`;
-  // 1: rojo, con un leve halo
-  planetas += `<circle cx="-99" cy="-99" r="9" fill="#ff6a5c" filter="url(#halo)">${o1.x}${o1.y}${o1.r(9)}${o1.luz(0.45)}</circle>`;
-  planetas += `<circle cx="-99" cy="-99" r="6" fill="url(#planeta1)">${o1.x}${o1.y}${o1.r(6)}</circle>`;
-  // 2: con anillos (el anillo pasa por detrás y su mitad delantera, por delante)
-  planetas += `<ellipse cx="-99" cy="-99" rx="13" ry="3.6" fill="none" stroke="#f3c48a" stroke-width="1.4" opacity="0.85">${o2.x}${o2.y}${o2.rx(13)}${o2.ry(3.6)}</ellipse>`;
-  planetas += `<circle cx="-99" cy="-99" r="6.5" fill="url(#planeta2)">${o2.x}${o2.y}${o2.r(6.5)}</circle>`;
-  planetas += `<ellipse cx="-99" cy="-99" rx="13" ry="3.6" fill="none" stroke="#f3c48a" stroke-width="1.4" opacity="0.85" pathLength="100" stroke-dasharray="50 50">${o2.x}${o2.y}${o2.rx(13)}${o2.ry(3.6)}</ellipse>`;
-  // 3: pequeño y pálido
-  planetas += `<circle cx="-99" cy="-99" r="3.6" fill="url(#planeta3)">${o3.x}${o3.y}${o3.r(3.6)}${o3.luz(1)}</circle>`;
+  for (const [, esc, dur, desfase, radioP, sup, anillo] of SISTEMA) {
+    const o = orbita(esc, dur, desfase);
+    const aro = (frente) =>
+      `<ellipse cx="-99" cy="-99" rx="1" ry="1" fill="none" ` +
+      (anillo === "saturno"
+        ? `stroke="#e9d3a0" stroke-width="${f1(radioP * 0.32)}" opacity="0.9"`
+        : `stroke="#bff3f7" stroke-width="0.7" opacity="0.7"`) +
+      (frente ? ` pathLength="100" stroke-dasharray="50 50"` : "") +
+      `>${o.pos}${o.rx(radioP * (anillo === "saturno" ? 2.2 : 1.7))}${o.ry(radioP * (anillo === "saturno" ? 0.62 : 1.15))}</ellipse>`;
+    let g = `<g>${o.luz(1)}`;
+    if (anillo) g += aro(false);
+    g += `<circle cx="-99" cy="-99" r="${radioP}" fill="url(#${sup})">${o.pos}${o.r(radioP)}</circle>`;
+    g += `<circle cx="-99" cy="-99" r="${radioP}" fill="url(#p-sombra)">${o.pos}${o.r(radioP)}</circle>`;
+    if (anillo) g += aro(true); // mitad delantera del anillo, por delante del planeta
+    planetas += g + `</g>`;
+  }
   planetas += `</g>`;
   lz.defs.push(planetas);
 
-  // Materia que cae: partículas que salen del anillo de días y entran en espiral
-  // en el disco de acreción del agujero.
-  const flujo = [];
-  const nParticulas = 12;
-  for (let p = 0; p < nParticulas; p++) {
-    const a0 = (p / nParticulas) * Math.PI * 2;
-    const pasos = 40;
+  // Corrientes de materia: trazos discontinuos que fluyen en espiral desde el
+  // anillo de días hasta el disco de acreción del agujero.
+  const corrientes = [];
+  const nCorrientes = 6;
+  for (let p = 0; p < nCorrientes; p++) {
+    const a0 = (p / nCorrientes) * Math.PI * 2 + 0.3;
+    const pasos = 48;
     const puntos = Array.from({ length: pasos + 1 }, (_, k) => {
       const tt = k / pasos;
-      const rad = R * 0.86 + (discoRx - R * 0.86) * Math.pow(tt, 0.75);
-      const a = a0 - tt * Math.PI * 1.6; // gira en el mismo sentido que el disco
+      const rad = R * 0.86 + (discoRx - R * 0.86) * Math.pow(tt, 0.8);
+      const a = a0 - tt * Math.PI * 1.4; // gira en el mismo sentido que el disco
       const yc = cy + (yAg - cy) * tt;
       const ry = rad * (r / R) * (1 - tt) + discoRy * (rad / discoRx) * tt;
       return `${f1(cx + Math.cos(a) * rad)} ${f1(yc + Math.sin(a) * ry)}`;
     });
-    const dur = f1(3.6 + (p % 4) * 0.5);
-    const ini = f1(-(p * 0.43));
-    const tam = f1(1.3 + (p % 3) * 0.45);
-    flujo.push(
-      `<circle r="${tam}" fill="${p % 2 ? "#ffb35c" : "#ff7a5c"}" opacity="0">` +
-        `<animateMotion path="M${puntos.join("L")}" dur="${dur}s" begin="${ini}s" repeatCount="indefinite"/>` +
-        `<animate attributeName="opacity" values="0;0.95;0.95;0" keyTimes="0;0.15;0.8;1" dur="${dur}s" begin="${ini}s" repeatCount="indefinite"/></circle>`,
+    const largo = 1000;
+    corrientes.push(
+      `<path d="M${puntos.join("L")}" pathLength="${largo}" fill="none" stroke="${p % 2 ? "#ffb35c" : "#ff6f5a"}" ` +
+        `stroke-width="1.3" stroke-linecap="round" stroke-dasharray="6 26" opacity="0.38">` +
+        `<animate attributeName="stroke-dashoffset" from="0" to="-${largo}" dur="${f1(7 + (p % 3))}s" repeatCount="indefinite"/></path>`,
     );
   }
-  lz.defs.push(`<g id="materia">${flujo.join("")}</g>`);
+  lz.defs.push(`<g id="materia">${corrientes.join("")}</g>`);
 
   // Barras repartidas por franjas según la y de su base.
   const franjaDe = (y) => Math.max(0, Math.min(nFranjas - 1, bordes.findIndex((b, k) => k > 0 && y < b) - 1));
