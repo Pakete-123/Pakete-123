@@ -316,7 +316,10 @@ async function stack(tema, p, T) {
 async function selector(tema, activo) {
   const w = 112;
   const h = 32;
-  const lz = new Lienzo(w, h, tema, TEXTOS[activo].cambiar);
+  // 7 px transparentes por debajo: en el README igualan el hueco de abajo con
+  // el de arriba (GitHub no deja ajustar márgenes con CSS).
+  const aire = 7;
+  const lz = new Lienzo(w, h + aire, tema, TEXTOS[activo].cambiar);
   const t = lz.t;
   lz.raw(`<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="${h / 2}" fill="${t.panel}" stroke="${t.linea}"/>`);
   // globo terráqueo de trazo
