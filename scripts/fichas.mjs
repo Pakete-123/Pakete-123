@@ -2,6 +2,7 @@
 // Todo sale de datos/perfil.json.
 
 import { ANCHO, Lienzo, datos, envolver, esc, f1, guardar, icono, medir, pildora, tarjeta } from "./comun.mjs";
+import { IDIOMAS, TEXTOS, perfilEn, sufijo } from "./textos.mjs";
 
 const TEMAS = ["dark", "light"];
 const M = 28; // margen interior
@@ -63,7 +64,7 @@ function lineasJson(lz, pares) {
   return filas.map((trozos) => trozos.map(([s, c]) => lz.tspan(s, "etiqueta", c)).join(""));
 }
 
-async function sobreMi(tema, p) {
+async function sobreMi(tema, p, T) {
   const s = p.sobre_mi;
   const anchoTexto = 440;
   const parrafos = s.texto.map((tx) => envolver(tx, "cuerpo", anchoTexto));
@@ -72,7 +73,7 @@ async function sobreMi(tema, p) {
   const altoJson = filasJson * 21 + 52;
   const alto = 60 + 32 + Math.max(altoTexto, altoJson) + 28;
 
-  const lz = new Lienzo(ANCHO, alto, tema, "Sobre mí", s.texto.join(" "));
+  const lz = new Lienzo(ANCHO, alto, tema, T.tituloSobreMi, s.texto.join(" "));
   const t = lz.t;
   const y0 = tarjeta(lz, "/me", "200 OK · application/json", "GET");
   let y = y0 + 44;
@@ -91,7 +92,7 @@ async function sobreMi(tema, p) {
   const jx = col + (ANCHO - M - col - jw) / 2;
   const jy = y0 + 28 + (alto - 28 - (y0 + 28) - altoJson) / 2;
   lz.raw(`<rect x="${f1(jx)}" y="${f1(jy)}" width="${f1(jw)}" height="${altoJson}" rx="4" fill="${t.panel}" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(jx + 20, jy + 24, "respuesta", "mono-pequeno", "suave"));
+  lz.raw(lz.texto(jx + 20, jy + 24, T.respuesta, "mono-pequeno", "suave"));
   lz.raw(`<circle cx="${f1(jx + jw - 20)}" cy="${f1(jy + 20)}" r="3" fill="${t.acento}"/>`);
   lineasJson(lz, s.respuesta).forEach((fila, i) => {
     lz.raw(`<text x="${f1(jx + 20)}" y="${f1(jy + 50 + i * 21)}" xml:space="preserve">${fila}</text>`);
@@ -107,7 +108,7 @@ function jsonPlano(pares) {
 
 // --- formación: como un git log --graph -----------------------------------
 
-async function trayectoria(tema, p) {
+async function trayectoria(tema, p, T) {
   const xTexto = 220;
   const anchoTexto = ANCHO - M - xTexto;
   const bloques = p.trayectoria.map((e) => ({ e, lineas: envolver(e.texto, "cuerpo", anchoTexto) }));
@@ -115,11 +116,11 @@ async function trayectoria(tema, p) {
   const alto = 60 + 30 + bloques.reduce((a, b) => a + altoBloque(b), 0);
 
   const lz = new Lienzo(
-    ANCHO, alto, tema, "Formación",
+    ANCHO, alto, tema, T.tituloFormacion,
     p.trayectoria.map((e) => `${e.titulo}, ${e.lugar} (${e.periodo})`).join("; "),
   );
   const t = lz.t;
-  const y0 = tarjeta(lz, "/education/dam", `200 OK · ${p.trayectoria.length} registros`, "PATCH");
+  const y0 = tarjeta(lz, "/education/dam", T.registros(p.trayectoria.length), "PATCH");
   const gx = 46;
   let y = y0 + 42;
   const yIni = y - 6;
@@ -190,7 +191,7 @@ const MARCA = {
   rust: "#DEA584",
 };
 
-async function stack(tema, p) {
+async function stack(tema, p, T) {
   const capas = p.stack;
   const cx = 650; // centro de las losas
   const a = 150; // semiancho
@@ -206,7 +207,7 @@ async function stack(tema, p) {
     capas.map((c) => `${c.capa}: ${c.items.map((i) => i[0]).join(", ")}`).join(". "),
   );
   const t = lz.t;
-  tarjeta(lz, "/stack", `${total} tecnologías · ${capas.length} capas`, "OPTIONS");
+  tarjeta(lz, "/stack", T.stackMeta(total, capas.length), "OPTIONS");
 
   const iconos = await Promise.all(capas.map((c) => Promise.all(c.items.map(([, slug]) => icono(slug)))));
 
@@ -310,10 +311,39 @@ async function stack(tema, p) {
 
 // -------------------------------------------------------------------------
 
-const p = datos();
-await porTema("contacto-email", (tm) => contacto(tm, "email", "correo", p.contacto.email, "izq"));
-await porTema("contacto-linkedin", (tm) => contacto(tm, "linkedin", "linkedin", `in/${p.contacto.linkedin}`, "der"));
-await porTema("sobre-mi", (tm) => sobreMi(tm, p));
-await porTema("trayectoria", (tm) => trayectoria(tm, p));
-await porTema("stack", (tm) => stack(tm, p));
+// --- selector de idioma: un interruptor ES | EN con el idioma actual marcado ---
+
+async function selector(tema, activo) {
+  const w = 112;
+  const h = 32;
+  const lz = new Lienzo(w, h, tema, TEXTOS[activo].cambiar);
+  const t = lz.t;
+  lz.raw(`<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="${h / 2}" fill="${t.panel}" stroke="${t.linea}"/>`);
+  // globo terráqueo de trazo
+  lz.raw(
+    `<g transform="translate(11 8)" fill="none" stroke="${t.suave}" stroke-width="1.2">` +
+      `<circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c1.9 1.9 2.8 4.1 2.8 6.5S9.9 12.6 8 14.5M8 1.5C6.1 3.4 5.2 5.6 5.2 8s.9 4.6 2.8 6.5"/></g>`,
+  );
+  const opciones = ["es", "en"];
+  opciones.forEach((id, k) => {
+    const x = 36 + k * 36;
+    const on = id === activo;
+    if (on) lz.raw(`<rect x="${x}" y="5" width="32" height="${h - 10}" rx="${(h - 10) / 2}" fill="${t.acento}"/>`);
+    lz.raw(lz.texto(x + 16, 20.5, id.toUpperCase(), "seccion", on ? "#ffffff" : "suave", { anchor: "middle" }));
+  });
+  return lz.render();
+}
+
+const base = datos();
+for (const idioma of IDIOMAS) {
+  const p = perfilEn(base, idioma);
+  const T = TEXTOS[idioma];
+  const s2 = sufijo(idioma);
+  await porTema(`contacto-email${s2}`, (tm) => contacto(tm, "email", T.correo, p.contacto.email, "izq"));
+  await porTema(`contacto-linkedin${s2}`, (tm) => contacto(tm, "linkedin", "linkedin", `in/${p.contacto.linkedin}`, "der"));
+  await porTema(`sobre-mi${s2}`, (tm) => sobreMi(tm, p, T));
+  await porTema(`trayectoria${s2}`, (tm) => trayectoria(tm, p, T));
+  await porTema(`stack${s2}`, (tm) => stack(tm, p, T));
+  await porTema(`idioma${s2}`, (tm) => selector(tm, idioma));
+}
 console.log("fichas listas");

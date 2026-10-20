@@ -14,10 +14,9 @@
 // `GITHUB_TOKEN=$(gh auth token) node scripts/actividad.mjs`.
 
 import { ANCHO, Lienzo, datos, f1, guardar, medir, tarjeta } from "./comun.mjs";
+import { IDIOMAS, TEXTOS, sufijo } from "./textos.mjs";
 
 const API = "https://api.github.com";
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const M = 28;
 // Colores oficiales de cada lenguaje en GitHub (linguist).
 const COLOR_LENGUAJE = {
@@ -171,25 +170,34 @@ function cifras(dias) {
   const mejor = dias.reduce((a, d) => (n(d) > n(a) ? d : a), dias[0]);
   const porDia = Array(7).fill(0);
   for (const d of dias) porDia[d.dia] += n(d);
-  const favorito = DIAS[porDia.indexOf(Math.max(...porDia))];
+  const favorito = porDia.indexOf(Math.max(...porDia)); // 0 = domingo
   return { total, privadas, publicas: total - privadas, activos, larga, actual, mejor, favorito, hasta: dias.at(-1).fecha };
 }
 
-const fechaCorta = (iso) => {
+const fechaCorta = (iso, T) => {
   const [, m, d] = iso.split("-").map(Number);
-  return `${d} ${MESES[m - 1]}`;
+  return T.fecha(d, m - 1);
+};
+const fechaLarga = (iso, T) => {
+  const [a, m, d] = iso.split("-").map(Number);
+  return T.fechaLarga(a, m - 1, d);
 };
 
-async function tarjetaActividad(tema, p, act, c, priv, lng) {
+async function tarjetaActividad(tema, p, act, c, priv, lng, T, idioma) {
+  const MESES = T.meses;
   const alto = 662;
   const lz = new Lienzo(
-    ANCHO, alto, tema, "Actividad en GitHub",
-    `${c.total} contribuciones en los últimos 12 meses (${c.publicas} públicas y ${c.privadas} privadas), ` +
-      `${c.activos} días con actividad y una racha máxima de ${c.larga} días. ` +
-      `Lenguajes: ${lng.lista.map(([l, x]) => `${l} ${(x * 100).toFixed(1)} %`).join(", ")}.`,
+    ANCHO, alto, tema, T.tituloActividad,
+    idioma === "es"
+      ? `${c.total} contribuciones en los últimos 12 meses (${c.publicas} públicas y ${c.privadas} privadas), ` +
+          `${c.activos} días con actividad y una racha máxima de ${c.larga} días. ` +
+          `Lenguajes: ${lng.lista.map(([l, x]) => `${l} ${(x * 100).toFixed(1)} %`).join(", ")}.`
+      : `${c.total} contributions in the last 12 months (${c.publicas} public and ${c.privadas} private), ` +
+          `${c.activos} active days and a longest streak of ${c.larga} days. ` +
+          `Languages: ${lng.lista.map(([l, x]) => `${l} ${(x * 100).toFixed(1)}%`).join(", ")}.`,
   );
   const t = lz.t;
-  const y0 = tarjeta(lz, "/activity/sync", `200 OK · sincronizado el ${c.hasta.split("-").reverse().join("/")}`, "POST");
+  const y0 = tarjeta(lz, "/activity/sync", T.sincronizado(fechaLarga(c.hasta, T)), "POST");
 
   // --- la escena: agujero negro y anillo de días en perspectiva ---
   const cx = ANCHO / 2;
@@ -516,7 +524,7 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       `<animate attributeName="opacity" values="0.9;0.55;0.9" dur="3s" repeatCount="indefinite"/></circle>` +
       disco("mitadDelante") +
       cuenta(c.total, cx, yAg - 1) +
-      lz.texto(cx, yAg + 13, "contribuciones", "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
+      lz.texto(cx, yAg + 13, T.contribuciones, "mono-pequeno", "#f3c9ce", { anchor: "middle" }) +
       `</g>`,
   );
   // Franjas de delante, por encima del agujero.
@@ -537,12 +545,12 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       `<animate attributeName="opacity" values="0.9;0" dur="2s" repeatCount="indefinite"/></circle>`,
   );
   lz.raw(`<circle cx="${f1(hx)}" cy="${f1(hy + 10)}" r="2.5" fill="${colPub}"/>`);
-  lz.raw(lz.texto(hx, hy + 26, "hoy", "mono-pequeno", "suave", { anchor: "middle" }));
+  lz.raw(lz.texto(hx, hy + 26, T.hoy, "mono-pequeno", "suave", { anchor: "middle" }));
   // leyenda de la escena
   const ly = cy + r + 58;
   const leyenda = [
-    [colPub, `públicas ${c.publicas}`],
-    [colPriv, `privadas ${c.privadas}`],
+    [colPub, `${T.publicas} ${c.publicas}`],
+    [colPriv, `${T.privadas} ${c.privadas}`],
   ];
   const anchoLeyenda = leyenda.reduce((a, [, s]) => a + 14 + medir(s, "mono-pequeno") + 20, -20);
   let lx = cx - anchoLeyenda / 2;
@@ -555,11 +563,11 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   // --- cifras en fila, centradas ---
   const fy = ly + 22;
   const tiles = [
-    [`${c.activos}`, "días con actividad"],
-    [`${c.larga} d`, "racha más larga"],
-    [`${c.actual} d`, "racha actual"],
-    [fechaCorta(c.mejor.fecha), "mejor día"],
-    [c.favorito, "día más activo"],
+    [`${c.activos}`, T.diasActividad],
+    [`${c.larga} d`, T.rachaLarga],
+    [`${c.actual} d`, T.rachaActual],
+    [fechaCorta(c.mejor.fecha, T), T.mejorDia],
+    [T.dias[c.favorito], T.diaActivo],
   ];
   const tw = (ANCHO - 2 * M - 4 * 10) / 5;
   tiles.forEach(([v, k], i) => {
@@ -576,10 +584,10 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   // --- repositorios públicos y privados, solo dos filas ---
   const by = fy + 66 + 40;
   const anchoCol = ANCHO - 2 * M;
-  lz.raw(lz.texto(M, by, "actividad en repositorios", "etiqueta", "suave"));
+  lz.raw(lz.texto(M, by, T.enRepos, "etiqueta", "suave"));
   const filas = [
-    ["públicos", c.publicas, colPub],
-    ["privados", c.privadas, colPriv],
+    [T.publicos, c.publicas, colPub],
+    [T.privados, c.privadas, colPriv],
   ];
   const maxFila = Math.max(1, ...filas.map(([, v]) => v));
   filas.forEach(([nombre, v, color], i) => {
@@ -595,8 +603,8 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   // --- lenguajes ---
   const lgy = alto - 66;
   lz.raw(`<line x1="${M}" y1="${lgy - 24.5}" x2="${ANCHO - M}" y2="${lgy - 24.5}" stroke="${t.linea}"/>`);
-  lz.raw(lz.texto(M, lgy, "lenguajes", "etiqueta", "suave"));
-  lz.raw(lz.texto(ANCHO - M, lgy, `${lng.repos} repositorios públicos`, "mono-pequeno", "suave", { anchor: "end" }));
+  lz.raw(lz.texto(M, lgy, T.lenguajes, "etiqueta", "suave"));
+  lz.raw(lz.texto(ANCHO - M, lgy, T.reposPublicos(lng.repos), "mono-pequeno", "suave", { anchor: "end" }));
   const colores = lng.lista.map(([l]) => COLOR_LENGUAJE[l] ?? t.suave);
   let lx2 = M;
   const anchoBarra = ANCHO - 2 * M;
@@ -623,7 +631,9 @@ const priv = await privadas(p.usuario, act.dias[0].fecha, new Set(act.repos.map(
 for (const d of act.dias) d.priv = priv.porDia.get(d.fecha) ?? 0;
 const c = cifras(act.dias);
 const lng = await lenguajes(p.usuario);
-const out = {};
-for (const tema of ["dark", "light"]) out[tema] = await tarjetaActividad(tema, p, act, c, priv, lng);
-guardar("actividad", out);
+for (const idioma of IDIOMAS) {
+  const out = {};
+  for (const tema of ["dark", "light"]) out[tema] = await tarjetaActividad(tema, p, act, c, priv, lng, TEXTOS[idioma], idioma);
+  guardar(`actividad${sufijo(idioma)}`, out);
+}
 console.log(`actividad lista: ${c.total} contribuciones (${c.privadas} privadas), ${lng.lista.length} lenguajes`);

@@ -53,7 +53,7 @@ jobs:
 
       - name: Guardar si ha cambiado algo
         run: |
-          git add assets README.md
+          git add assets README.md README.en.md
           if git diff --cached --quiet; then
             echo "Nada que actualizar."
             exit 0

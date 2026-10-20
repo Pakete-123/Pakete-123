@@ -92,5 +92,51 @@
   "contacto": {
     "email": "pablotl.dev@gmail.com",
     "linkedin": "pablo-torrecilla"
+  },
+  "en": {
+    "titular": "Backend and web developer in training",
+    "datos_banner": [
+      ["ubicacion", "Madrid, Spain"],
+      ["centro", "2nd year DAM · IES Lázaro Cárdenas"],
+      ["enfoque", "Higher Technician in Web Development"]
+    ],
+    "sobre_mi": {
+      "texto": [
+        "I'm in the second year of Multiplatform Application Development at IES Lázaro Cárdenas, having already completed the Higher Technician degree in Web Application Development.",
+        "Where I enjoy myself most is on the server: designing the data model, deciding who can access what and serving it through a clear, maintainable API.",
+        "In my course projects I've worked in teams with branches, pull requests and code review, a way of working I feel comfortable with."
+      ],
+      "respuesta": [
+        ["name", "Pablo Torrecilla"],
+        ["course", "2nd year DAM"],
+        ["degree", "Higher Technician in DAW"],
+        ["location", "Madrid, Spain"],
+        [
+          "focus",
+          ["backend", "web"]
+        ]
+      ]
+    },
+    "trayectoria": [
+      {
+        "periodo": "2026 — present",
+        "actual": true,
+        "titulo": "Multiplatform Application Development",
+        "lugar": "IES Lázaro Cárdenas · 2nd year",
+        "texto": "Higher Vocational Training programme, currently in progress."
+      },
+      {
+        "periodo": "2024 — 2026",
+        "titulo": "Web Application Development",
+        "lugar": "Higher Technician",
+        "texto": "Full stack training in programming, databases, client-side and server-side development and interface design. The intermodular project was developed during this programme.",
+        "etiquetas": [
+          "DWEC",
+          "DWES",
+          "DIW",
+          "BBDD"
+        ]
+      }
+    ]
   }
 }

@@ -4,16 +4,12 @@
 // subiendo por la derecha.
 
 import { ANCHO, Lienzo, datos, envolver, f1, guardar, medir } from "./comun.mjs";
+import { IDIOMAS, TEXTOS, perfilEn, sufijo } from "./textos.mjs";
 
 const ALTO = 340;
 
-// Capas que atraviesa la petición: [título, detalle, anotación de la flecha de ida]
-const CAPAS = [
-  ["Angular", "cliente · formulario de login", "POST /api/login"],
-  ["AdminMiddleware", "Laravel · comprueba el acceso", "isAdmin()"],
-  ["AuthController", "Laravel · valida credenciales", "SELECT users"],
-  ["MySQL", "tabla users", null],
-];
+// Las capas que atraviesa la petición ([título, detalle, anotación de la
+// flecha de ida]) están en textos.mjs, en cada idioma.
 
 // Iconos de trazo (16x16) para las líneas de datos.
 const ICONOS = {
@@ -22,7 +18,8 @@ const ICONOS = {
   enfoque: '<rect x="2.5" y="1.5" width="11" height="13" rx="1.5"/><path d="M5.5 5h5M5.5 8h5M5.5 11h3"/>',
 };
 
-async function banner(tema, p) {
+async function banner(tema, p, T) {
+  const CAPAS = T.capas;
   const lz = new Lienzo(ANCHO, ALTO, tema, p.nombre, `${p.nombre}. ${p.titular}.`);
   const t = lz.t;
 
@@ -74,7 +71,7 @@ async function banner(tema, p) {
   // La respuesta sale por arriba del carril de vuelta.
   lz.raw(`<line x1="${xVuelta}" y1="${f1(yCaja(0))}" x2="${xVuelta}" y2="${f1(yCaja(0) - 14)}" stroke="${t.ok}" stroke-dasharray="2 3"/>`);
   lz.raw(lz.texto(xVuelta + 8, yCaja(0) - 8, "200 OK", "mono-pequeno", "ok"));
-  lz.raw(lz.texto(xIda - 8, yCaja(0) - 8, "petición", "mono-pequeno", "suave", { anchor: "end" }));
+  lz.raw(lz.texto(xIda - 8, yCaja(0) - 8, T.peticion, "mono-pequeno", "suave", { anchor: "end" }));
 
   // --- el texto ---
   const x0 = 44;
@@ -98,6 +95,10 @@ async function banner(tema, p) {
   return lz.render();
 }
 
-const p = datos();
-guardar("banner", { dark: await banner("dark", p), light: await banner("light", p) });
+const base = datos();
+for (const idioma of IDIOMAS) {
+  const p = perfilEn(base, idioma);
+  const T = TEXTOS[idioma];
+  guardar(`banner${sufijo(idioma)}`, { dark: await banner("dark", p, T), light: await banner("light", p, T) });
+}
 console.log("banner listo");
