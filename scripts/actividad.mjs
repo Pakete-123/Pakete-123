@@ -417,10 +417,6 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
     ["urano", 1.08, 48, -14, 6.8, "p-urano", "urano"],
     ["neptuno", 1.18, 60, -41, 6.5, "p-neptuno"],
   ];
-  // Órbitas muy tenues sobre el suelo, para leer el conjunto como un sistema.
-  for (const [, esc] of SISTEMA) {
-    lz.raw(`<ellipse cx="${cx}" cy="${f1(cy)}" rx="${f1(R * esc)}" ry="${f1(r * esc)}" fill="none" stroke="${t.tenue}" stroke-width="0.6" stroke-dasharray="1 5" opacity="0.6"/>`);
-  }
   let planetas = `<g id="planetas">`;
   for (const [, esc, dur, desfase, radioP, sup, anillo] of SISTEMA) {
     const o = orbita(esc, dur, desfase);
@@ -441,29 +437,44 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
   planetas += `</g>`;
   lz.defs.push(planetas);
 
-  // Corrientes de materia: trazos discontinuos que fluyen en espiral desde el
-  // anillo de días hasta el disco de acreción del agujero.
-  const corrientes = [];
-  const nCorrientes = 6;
-  for (let p = 0; p < nCorrientes; p++) {
-    const a0 = (p / nCorrientes) * Math.PI * 2 + 0.3;
-    const pasos = 48;
+  // Rocas espaciales: fragmentos irregulares que salen del anillo de días y el
+  // agujero atrae en espiral. Giran sobre sí mismas, se calientan hasta quedar
+  // incandescentes y se encogen al llegar al disco de acreción, donde desaparecen.
+  const FORMAS = [
+    "M-1 -0.8L0.4 -1.1L1.1 -0.2L0.7 0.9L-0.5 1L-1.1 0.2Z",
+    "M-0.9 -1L0.8 -0.7L1 0.5L0 1.1L-1.1 0.4Z",
+    "M-0.6 -1.1L0.9 -0.9L1.1 0.3L0.3 1L-0.9 0.8L-1.1 -0.3Z",
+  ];
+  const rocas = [];
+  const nRocas = 16;
+  for (let p = 0; p < nRocas; p++) {
+    const a0 = (p / nRocas) * Math.PI * 2 + (p % 3) * 0.4;
+    const pasos = 40;
     const puntos = Array.from({ length: pasos + 1 }, (_, k) => {
       const tt = k / pasos;
-      const rad = R * 0.86 + (discoRx - R * 0.86) * Math.pow(tt, 0.8);
-      const a = a0 - tt * Math.PI * 1.4; // gira en el mismo sentido que el disco
+      const rad = R * (0.8 + (p % 4) * 0.05) + (discoRx - R * 0.8) * Math.pow(tt, 0.75);
+      const a = a0 - tt * Math.PI * 1.5; // gira en el mismo sentido que el disco
       const yc = cy + (yAg - cy) * tt;
       const ry = rad * (r / R) * (1 - tt) + discoRy * (rad / discoRx) * tt;
       return `${f1(cx + Math.cos(a) * rad)} ${f1(yc + Math.sin(a) * ry)}`;
     });
-    const largo = 1000;
-    corrientes.push(
-      `<path d="M${puntos.join("L")}" pathLength="${largo}" fill="none" stroke="${p % 2 ? "#ffb35c" : "#ff6f5a"}" ` +
-        `stroke-width="1.3" stroke-linecap="round" stroke-dasharray="6 26" opacity="0.38">` +
-        `<animate attributeName="stroke-dashoffset" from="0" to="-${largo}" dur="${f1(7 + (p % 3))}s" repeatCount="indefinite"/></path>`,
+    const dur = f1(5 + (p % 5) * 0.8);
+    const ini = f1(-(p * 0.71));
+    const tam = f1(1.6 + (p % 4) * 0.55);
+    const ciclo = `dur="${dur}s" begin="${ini}s" repeatCount="indefinite"`;
+    rocas.push(
+      `<g><animateMotion path="M${puntos.join("L")}" ${ciclo}/>` +
+        // tamaño y opacidad: aparece, viaja y se consume al llegar al disco
+        `<g opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.12;0.85;1" ${ciclo}/>` +
+        `<g><animateTransform attributeName="transform" type="scale" values="${tam};${tam};${f1(tam * 0.35)}" keyTimes="0;0.6;1" ${ciclo}/>` +
+        `<path d="${FORMAS[p % FORMAS.length]}" fill="#8b817a" stroke="#4a4340" stroke-width="0.25">` +
+        `<animateTransform attributeName="transform" type="rotate" from="0" to="${p % 2 ? 360 : -360}" dur="${f1(2 + (p % 3))}s" repeatCount="indefinite"/>` +
+        // se calienta al acercarse: gris, naranja, casi blanco
+        `<animate attributeName="fill" values="#8b817a;#8b817a;#ff7a3c;#ffe2b0" keyTimes="0;0.45;0.8;1" ${ciclo}/>` +
+        `</path></g></g></g>`,
     );
   }
-  lz.defs.push(`<g id="materia">${corrientes.join("")}</g>`);
+  lz.defs.push(`<g id="materia">${rocas.join("")}</g>`);
 
   // Barras repartidas por franjas según la y de su base.
   const franjaDe = (y) => Math.max(0, Math.min(nFranjas - 1, bordes.findIndex((b, k) => k > 0 && y < b) - 1));
