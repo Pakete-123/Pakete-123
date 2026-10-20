@@ -194,9 +194,9 @@ async function stack(tema, p) {
   const capas = p.stack;
   const cx = 650; // centro de las losas
   const a = 150; // semiancho
-  const b = 40; // semialto
-  const grosor = 12;
-  const paso = 96; // separación vertical: deja aire para los logos de cada capa
+  const b = 38; // semialto
+  const grosor = 10;
+  const paso = 92; // separación vertical: ninguna losa toca a la siguiente ni a sus logos
   const yTop = 60 + 52 + b;
   const alto = yTop + (capas.length - 1) * paso + b + grosor + 30;
   const total = capas.reduce((s, c) => s + c.items.length, 0);
@@ -255,14 +255,23 @@ async function stack(tema, p) {
     let rejilla = "";
     for (let k = 1; k < 6; k++) rejilla += `M${k / 6} 0V1M0 ${k / 6}H1`;
     partes.push(`<path transform="${mat}" d="${rejilla}" fill="none" stroke="${t.rejilla}" stroke-width="${f1(1 / b)}"/>`);
-    // logos de pie, repartidos en horizontal sobre el centro de la losa
+    // Logos de pie sobre la cara superior. Con más de cuatro van en dos filas
+    // (la de atrás primero), para que ninguno caiga en las puntas de la losa,
+    // donde ya no hay superficie.
     const n = c.items.length;
-    // Con muchas tecnologías los logos se juntan un poco para caber en la losa.
-    const tam = n > 7 ? 20 : n > 5 ? 21 : 24;
-    const sep = Math.min(46, 250 / Math.max(n - 1, 1));
+    const tam = n > 4 ? 21 : 24;
+    const sep = n > 4 ? 40 : 44;
+    const delanteN = n > 4 ? Math.ceil(n / 2) : n;
+    const atrasN = n - delanteN;
+    // Si las dos filas tienen los mismos logos, se desplazan media separación
+    // entre sí (al tresbolillo) para que ninguno quede detrás de otro.
+    const desfase = atrasN && atrasN === delanteN ? sep / 4 : 0;
+    const sitios = [
+      ...Array.from({ length: atrasN }, (_, k) => [cx + (k - (atrasN - 1) / 2) * sep + desfase, cy - 12]),
+      ...Array.from({ length: delanteN }, (_, k) => [cx + (k - (delanteN - 1) / 2) * sep - desfase, cy + (atrasN ? 14 : 4)]),
+    ];
     iconos[i].forEach((d, k) => {
-      const x = cx + (k - (n - 1) / 2) * sep;
-      const yb = cy + 4; // donde "apoya" el logo
+      const [x, yb] = sitios[k]; // yb: donde "apoya" el logo
       partes.push(`<ellipse cx="${f1(x)}" cy="${yb}" rx="${f1(tam * 0.54)}" ry="4.5" fill="${t.linea}"/>`);
       partes.push(
         `<svg x="${f1(x - tam / 2)}" y="${yb - tam - 6}" width="${tam}" height="${tam}" viewBox="0 0 24 24">` +
