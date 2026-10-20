@@ -342,14 +342,28 @@ async function tarjetaActividad(tema, p, act, c, priv, lng) {
       `<animate attributeName="opacity" values="1;0.55;1" ${flota}/></ellipse>`,
   );
   // Onda: nace en el rebote, justo cuando el agujero empieza a subir (inicio de
-  // cada ciclo), y se expande por el suelo por debajo de todas las barras.
+  // cada ciclo), y se expande por el suelo hasta la línea de las barras. Lleva
+  // una máscara con la silueta de todas las barras (algo más anchas): donde hay
+  // una barra la onda no se pinta, aunque la barra sea semitransparente.
+  const siluetas = barras
+    .filter((b) => b.h)
+    .map((b) => {
+      const w = 1.4 + b.prof * 1.6 + 3;
+      return `<rect x="${f1(b.x - w / 2)}" y="${f1(b.y - b.h - 2)}" width="${f1(w)}" height="${f1(b.h + 4)}" rx="${f1(w / 2)}"/>`;
+    })
+    .join("");
+  lz.defs.push(
+    `<mask id="sinBarras" maskUnits="userSpaceOnUse" x="0" y="0" width="${ANCHO}" height="${alto}">` +
+      `<rect width="${ANCHO}" height="${alto}" fill="#fff"/><g fill="#000">${siluetas}</g></mask>`,
+  );
   const onda = (attr, desde, hasta) =>
     `<animate attributeName="${attr}" values="${desde};${hasta}" dur="${ciclo}s" begin="0s" repeatCount="indefinite" ` +
     `calcMode="spline" keyTimes="0;1" keySplines="0.15 0.7 0.3 1"/>`;
   lz.raw(
-    `<ellipse cx="${cx}" cy="${f1(cy)}" rx="${discoRx * 0.6}" ry="${f1(discoRx * 0.12)}" fill="none" stroke="${colPub}" stroke-width="1.8" opacity="0">` +
-      onda("rx", f1(discoRx * 0.6), R + 18) + onda("ry", f1(discoRx * 0.12), r + 6) + onda("opacity", 0.9, 0) +
-      onda("stroke-width", 2.4, 0.6) + `</ellipse>`,
+    `<g mask="url(#sinBarras)">` +
+      `<ellipse cx="${cx}" cy="${f1(cy)}" rx="${discoRx * 0.6}" ry="${f1(discoRx * 0.12)}" fill="none" stroke="${colPub}" stroke-width="1.8" opacity="0">` +
+      onda("rx", f1(discoRx * 0.6), R - 6) + onda("ry", f1(discoRx * 0.12), r - 2) + onda("opacity", 0.9, 0) +
+      onda("stroke-width", 2.4, 0.6) + `</ellipse></g>`,
   );
 
   // --- profundidad ---
