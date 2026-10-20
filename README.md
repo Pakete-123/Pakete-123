@@ -6,7 +6,7 @@
   El bloque HTML va sin líneas en blanco para que no aparezcan huecos entre
   tarjetas.
 -->
-<p align="right"><a href="README.en.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/idioma-dark.svg?v=64e6d0bc0b"><img src="assets/idioma-light.svg?v=feb891a782" width="112" height="39" alt="Idioma: español. Pulsa para ver el perfil en inglés (English)."></picture></a></p>
+<p align="right"><a href="README.en.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/idioma-dark.svg?v=230089eff8"><img src="assets/idioma-light.svg?v=33fbc55369" width="112" height="36" alt="Idioma: español. Pulsa para ver el perfil en inglés (English)."></picture></a></p>
 <div align="center">
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg?v=0e606b0056"><img src="assets/banner-light.svg?v=1c9e8e7f4e" width="100%" alt="Pablo Torrecilla. Desarrollador backend y web en formación: 2.º de DAM en el IES Lázaro Cárdenas y Técnico Superior en DAW. Madrid, España. Diagrama animado del recorrido de una petición de login en el proyecto intermodular: Angular, AdminMiddleware, AuthController y MySQL."></picture>
 <a href="mailto:pablotl.dev@gmail.com"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/contacto-email-dark.svg?v=496fb62f79"><img src="assets/contacto-email-light.svg?v=3cf67b5b63" width="50%" alt="Correo: pablotl.dev@gmail.com"></picture></a><a href="https://www.linkedin.com/in/pablo-torrecilla/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/contacto-linkedin-dark.svg?v=50a9d34ed3"><img src="assets/contacto-linkedin-light.svg?v=bd5f2088ab" width="50%" alt="LinkedIn: in/pablo-torrecilla"></picture></a>
