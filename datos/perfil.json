@@ -69,7 +69,6 @@
         ["PHP", "php"],
         ["Node.js", "nodedotjs"],
         ["Laravel", "laravel"],
-        ["Express", "express"],
         ["Rust", "rust"]
       ]
     },
