@@ -314,8 +314,11 @@ async function stack(tema, p, T) {
 // --- selector de idioma: un interruptor ES | EN con el idioma actual marcado ---
 
 async function selector(tema, activo) {
-  const w = 112;
+  const w = 106;
   const h = 32;
+  // El globo y la pastilla de EN comparten centro con los extremos redondeados
+  // del interruptor: así los márgenes de izquierda y derecha quedan iguales.
+  const pad = 5;
   // 4 px transparentes por debajo: en el README igualan el hueco de abajo con
   // el de arriba (GitHub no deja ajustar márgenes con CSS).
   const aire = 4;
@@ -324,14 +327,14 @@ async function selector(tema, activo) {
   lz.raw(`<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="${h / 2}" fill="${t.panel}" stroke="${t.linea}"/>`);
   // globo terráqueo de trazo
   lz.raw(
-    `<g transform="translate(11 8)" fill="none" stroke="${t.suave}" stroke-width="1.2">` +
+    `<g transform="translate(${h / 2 - 8} 8)" fill="none" stroke="${t.suave}" stroke-width="1.2">` +
       `<circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c1.9 1.9 2.8 4.1 2.8 6.5S9.9 12.6 8 14.5M8 1.5C6.1 3.4 5.2 5.6 5.2 8s.9 4.6 2.8 6.5"/></g>`,
   );
   const opciones = ["es", "en"];
   opciones.forEach((id, k) => {
-    const x = 36 + k * 36;
+    const x = w - pad - 32 - (opciones.length - 1 - k) * 36;
     const on = id === activo;
-    if (on) lz.raw(`<rect x="${x}" y="5" width="32" height="${h - 10}" rx="${(h - 10) / 2}" fill="${t.acento}"/>`);
+    if (on) lz.raw(`<rect x="${x}" y="${pad}" width="32" height="${h - 2 * pad}" rx="${h / 2 - pad}" fill="${t.acento}"/>`);
     lz.raw(lz.texto(x + 16, 20.5, id.toUpperCase(), "seccion", on ? "#ffffff" : "suave", { anchor: "middle" }));
   });
   return lz.render();
