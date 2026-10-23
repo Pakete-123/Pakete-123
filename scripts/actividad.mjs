@@ -42,7 +42,7 @@ async function peticion(url, cuerpo) {
   const r = await fetch(url, {
     method: cuerpo ? "POST" : "GET",
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "perfil-pakete-123" },
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "perfil-pablotldev" },
   });
   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
   return r.json();

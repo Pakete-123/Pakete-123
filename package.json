@@ -1,5 +1,5 @@
 {
-  "name": "perfil-pakete-123",
+  "name": "perfil-pablotldev",
   "version": "1.0.0",
   "description": "Generador de los SVG del perfil de GitHub",
   "scripts": {
@@ -11,13 +11,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Pakete-123/Pakete-123.git"
+    "url": "git+https://github.com/pablotldev/pablotldev.git"
   },
   "type": "module",
   "bugs": {
-    "url": "https://github.com/Pakete-123/Pakete-123/issues"
+    "url": "https://github.com/pablotldev/pablotldev/issues"
   },
-  "homepage": "https://github.com/Pakete-123/Pakete-123#readme",
+  "homepage": "https://github.com/pablotldev/pablotldev#readme",
   "dependencies": {
     "fontkit": "^2.0.4",
     "subset-font": "^2.4.0"
